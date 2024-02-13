@@ -118,7 +118,8 @@ if %build_rime% == 1 (
   if errorlevel 1 goto error
 
 cd %WEASEL_ROOT%
-  copy /Y librime\dist\include\rime_*.h include\
+@REM   copy /Y librime\dist\include\rime_*.h include\
+  copy /Y librime\dist\include\rime_levers_api.h include\
   if errorlevel 1 goto error
   copy /Y librime\dist\lib\rime.lib lib\
   if errorlevel 1 goto error

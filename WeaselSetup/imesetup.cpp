@@ -80,6 +80,32 @@ int install_ime_file(std::wstring& srcPath, const std::wstring& ext, bool hant, 
 	_wsplitpath_s(path, drive, _countof(drive), dir, _countof(dir), NULL, 0, NULL, 0);
 	srcPath = std::wstring(drive) + dir + srcFileName;
 
+#ifdef WIN64
+	GetSystemWow64Directory(path, _countof(path));
+	std::wstring destPath = std::wstring(path) + L"\\weasel" + ext;
+
+	int retval = 0;
+	// 复制 .dll/.ime 到SystemWow64目录
+	if (!copy_file(srcPath, destPath))
+	{
+		MSG_NOT_SILENT_ID_CAP(silent, destPath.c_str(), IDS_STR_INSTALL_FAILED, MB_ICONERROR | MB_OK);
+		return 1;
+	}
+	retval += func(destPath, true, true, hant, silent);
+
+	GetSystemDirectoryW(path, _countof(path));
+	destPath = std::wstring(path) + L"\\weasel" + ext;
+	ireplace_last(srcPath, ext, L"x64" + ext);
+
+	// 复制 .dll/.ime 到System32目录
+	if (!copy_file(srcPath, destPath))
+	{
+		MSG_NOT_SILENT_ID_CAP(silent, destPath.c_str(), IDS_STR_INSTALL_FAILED, MB_ICONERROR | MB_OK);
+		return 1;
+	}
+	retval += func(destPath, true, false, hant, silent);
+#else
+
 	GetSystemDirectoryW(path, _countof(path));
 	std::wstring destPath = std::wstring(path) + L"\\weasel" + ext;
 
@@ -114,6 +140,8 @@ int install_ime_file(std::wstring& srcPath, const std::wstring& ext, bool hant, 
 			return 1;
 		}
 	}
+
+#endif
 	return retval;
 }
 

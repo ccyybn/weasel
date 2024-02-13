@@ -302,11 +302,15 @@ void WeaselTSF::_HandleLangBarMenuSelect(UINT wID)
 	else
 	{
 		std::wstring WEASEL_REG_NAME_;
+
+#ifdef WIN64
+		WEASEL_REG_NAME_ = L"Software\\Rime\\Weasel";
+#else
 		if(is_wow64())
 			WEASEL_REG_NAME_ = L"Software\\WOW6432Node\\Rime\\Weasel";
 		else
 			WEASEL_REG_NAME_ = L"Software\\Rime\\Weasel";
-
+#endif
 		TCHAR szValue[MAX_PATH];
 		DWORD dwBufLen = MAX_PATH;
 

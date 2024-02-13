@@ -3,6 +3,7 @@
 !include LogicLib.nsh
 !include MUI2.nsh
 !include x64.nsh
+!define LIBRARY_X64
 
 Unicode true
 
@@ -38,7 +39,7 @@ VIAddVersionKey /LANG=2052 "FileVersion" "${WEASEL_VERSION}"
 SetCompressor /SOLID lzma
 
 ; The default installation directory
-InstallDir $PROGRAMFILES\Rime
+InstallDir $PROGRAMFILES64\Rime
 
 ; Registry key to check for directory (so if you install again, it will
 ; overwrite the old one automatically)
@@ -141,6 +142,8 @@ FunctionEnd
 Section "Weasel"
 
   SectionIn RO
+
+  SetRegView 64
 
   ; Write the new installation path into the registry
   WriteRegStr HKLM SOFTWARE\Rime\Weasel "InstallDir" "$INSTDIR"
@@ -282,6 +285,7 @@ Section "Uninstall"
   ExecWait '"$INSTDIR\WeaselSetup.exe" /u'
 
   ; Remove registry keys
+  SetRegView 64
   DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Weasel"
   DeleteRegValue HKLM "Software\Microsoft\Windows\CurrentVersion\Run" "WeaselServer"
   DeleteRegKey HKLM SOFTWARE\Rime

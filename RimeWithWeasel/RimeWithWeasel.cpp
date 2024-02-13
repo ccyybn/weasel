@@ -58,7 +58,7 @@ void _UpdateUIStyle(RimeConfig* config, UI* ui, bool initialize);
 bool _UpdateUIStyleColor(RimeConfig* config, UIStyle& style, std::string color = "");
 void _LoadAppOptions(RimeConfig* config, AppOptionsByAppName& app_options);
 
-void _RefreshTrayIcon(const UINT session_id, const std::function<void()> _UpdateUICallback)
+void _RefreshTrayIcon(const RimeSessionId session_id, const std::function<void()> _UpdateUICallback)
 {
 	// Dangerous, don't touch
 	static char app_name[50];
@@ -139,7 +139,7 @@ void RimeWithWeaselHandler::Finalize()
 	RimeFinalize();
 }
 
-UINT RimeWithWeaselHandler::FindSession(UINT session_id)
+RimeSessionId RimeWithWeaselHandler::FindSession(RimeSessionId session_id)
 {
 	if (m_disabled) return 0;
 	Bool found = RimeFindSession(session_id);
@@ -147,7 +147,7 @@ UINT RimeWithWeaselHandler::FindSession(UINT session_id)
 	return found ? session_id : 0;
 }
 
-UINT RimeWithWeaselHandler::AddSession(LPWSTR buffer, EatLine eat)
+RimeSessionId RimeWithWeaselHandler::AddSession(LPWSTR buffer, EatLine eat)
 {
 	if (m_disabled)
 	{
@@ -155,7 +155,7 @@ UINT RimeWithWeaselHandler::AddSession(LPWSTR buffer, EatLine eat)
 		EndMaintenance();
 		if (m_disabled) return 0;
 	}
-	UINT session_id = (UINT)RimeCreateSession();
+	RimeSessionId session_id = (RimeSessionId)RimeCreateSession();
 	DLOG(INFO) << "Add session: created session_id = " << session_id;
 	_ReadClientInfo(session_id, buffer);
 
@@ -187,7 +187,7 @@ UINT RimeWithWeaselHandler::AddSession(LPWSTR buffer, EatLine eat)
 	return session_id;
 }
 
-UINT RimeWithWeaselHandler::RemoveSession(UINT session_id)
+RimeSessionId RimeWithWeaselHandler::RemoveSession(RimeSessionId session_id)
 {
 	if (m_ui) m_ui->Hide();
 	if (m_disabled) return 0;
@@ -247,7 +247,7 @@ void RimeWithWeaselHandler::UpdateColorTheme(BOOL darkMode)
 	m_ui->style() = m_session_status_map[m_active_session].style;
 }
 
-BOOL RimeWithWeaselHandler::ProcessKeyEvent(KeyEvent keyEvent, UINT session_id, EatLine eat)
+BOOL RimeWithWeaselHandler::ProcessKeyEvent(KeyEvent keyEvent, RimeSessionId session_id, EatLine eat)
 {
 	DLOG(INFO) << "Process key event: keycode = " << keyEvent.keycode << ", mask = " << keyEvent.mask
 		 << ", session_id = " << session_id;
@@ -270,7 +270,7 @@ BOOL RimeWithWeaselHandler::ProcessKeyEvent(KeyEvent keyEvent, UINT session_id, 
 	return (BOOL)handled;
 }
 
-void RimeWithWeaselHandler::CommitComposition(UINT session_id)
+void RimeWithWeaselHandler::CommitComposition(RimeSessionId session_id)
 {
 	DLOG(INFO) << "Commit composition: session_id = " << session_id;
 	if (m_disabled) return;
@@ -279,7 +279,7 @@ void RimeWithWeaselHandler::CommitComposition(UINT session_id)
 	m_active_session = session_id;
 }
 
-void RimeWithWeaselHandler::ClearComposition(UINT session_id)
+void RimeWithWeaselHandler::ClearComposition(RimeSessionId session_id)
 {
 	DLOG(INFO) << "Clear composition: session_id = " << session_id;
 	if (m_disabled) return;
@@ -288,7 +288,7 @@ void RimeWithWeaselHandler::ClearComposition(UINT session_id)
 	m_active_session = session_id;
 }
 
-void RimeWithWeaselHandler::SelectCandidateOnCurrentPage(size_t index, UINT session_id)
+void RimeWithWeaselHandler::SelectCandidateOnCurrentPage(size_t index, RimeSessionId session_id)
 {
 	DLOG(INFO) << "select candidate on current page, session_id = " << session_id << ", index = " << index;
 	if (m_disabled) return;
@@ -296,7 +296,7 @@ void RimeWithWeaselHandler::SelectCandidateOnCurrentPage(size_t index, UINT sess
 	api->select_candidate_on_current_page(session_id, index);
 }
 
-void RimeWithWeaselHandler::FocusIn(DWORD client_caps, UINT session_id)
+void RimeWithWeaselHandler::FocusIn(DWORD client_caps, RimeSessionId session_id)
 {
 	DLOG(INFO) << "Focus in: session_id = " << session_id << ", client_caps = " << client_caps;
 	if (m_disabled) return;
@@ -304,14 +304,14 @@ void RimeWithWeaselHandler::FocusIn(DWORD client_caps, UINT session_id)
 	m_active_session = session_id;
 }
 
-void RimeWithWeaselHandler::FocusOut(DWORD param, UINT session_id)
+void RimeWithWeaselHandler::FocusOut(DWORD param, RimeSessionId session_id)
 {
 	DLOG(INFO) << "Focus out: session_id = " << session_id;
 	if (m_ui) m_ui->Hide();
 	m_active_session = 0;
 }
 
-void RimeWithWeaselHandler::UpdateInputPosition(RECT const& rc, UINT session_id)
+void RimeWithWeaselHandler::UpdateInputPosition(RECT const& rc, RimeSessionId session_id)
 {
 	DLOG(INFO) << "Update input position: (" << rc.left << ", " << rc.top
 		<< "), session_id = " << session_id << ", m_active_session = " << m_active_session;
@@ -330,7 +330,7 @@ std::string RimeWithWeaselHandler::m_message_label;
 std::string RimeWithWeaselHandler::m_option_name;
 
 void RimeWithWeaselHandler::OnNotify(void* context_object,
-	                                 uintptr_t session_id,
+	                                 RimeSessionId session_id,
                                      const char* message_type,
                                      const char* message_value)
 {
@@ -353,7 +353,7 @@ void RimeWithWeaselHandler::OnNotify(void* context_object,
 	}
 }
 
-void RimeWithWeaselHandler::_ReadClientInfo(UINT session_id, LPWSTR buffer)
+void RimeWithWeaselHandler::_ReadClientInfo(RimeSessionId session_id, LPWSTR buffer)
 {
 	std::string app_name;
 	std::string client_type;
@@ -453,7 +453,7 @@ void RimeWithWeaselHandler::EndMaintenance()
 	m_session_status_map.clear();
 }
 
-void RimeWithWeaselHandler::SetOption(UINT session_id, const std::string & opt, bool val)
+void RimeWithWeaselHandler::SetOption(RimeSessionId session_id, const std::string & opt, bool val)
 {
 	RimeSetOption(session_id, opt.c_str(), val);
 }
@@ -474,7 +474,7 @@ bool RimeWithWeaselHandler::_IsDeployerRunning()
 	return deployer_detected;
 }
 
-void RimeWithWeaselHandler::_UpdateUI(UINT session_id)
+void RimeWithWeaselHandler::_UpdateUI(RimeSessionId session_id)
 {
 	Status weasel_status;
 	Context weasel_context;
@@ -539,7 +539,7 @@ std::wstring _LoadIconSettingFromSchema(RimeConfig& config,
 	return L"";
 }
 
-void RimeWithWeaselHandler::_LoadSchemaSpecificSettings(UINT session_id, const std::string& schema_id)
+void RimeWithWeaselHandler::_LoadSchemaSpecificSettings(RimeSessionId session_id, const std::string& schema_id)
 {
 	if (!m_ui) return;
 	RimeConfig config;
@@ -601,7 +601,7 @@ void RimeWithWeaselHandler::_LoadSchemaSpecificSettings(UINT session_id, const s
 	RimeConfigClose(&config);
 }
 
-void RimeWithWeaselHandler::_LoadAppInlinePreeditSet(UINT session_id, bool ignore_app_name)
+void RimeWithWeaselHandler::_LoadAppInlinePreeditSet(RimeSessionId session_id, bool ignore_app_name)
 {
 	static char _app_name[50];
 	RimeGetProperty(session_id, "client_app", _app_name, sizeof(_app_name) - 1);
@@ -714,7 +714,7 @@ inline std::string _GetLabelText(const std::vector<Text> &labels, int id, const 
 	return wstring_to_string(std::wstring(buffer), CP_UTF8);
 }
 
-bool RimeWithWeaselHandler::_Respond(UINT session_id, EatLine eat)
+bool RimeWithWeaselHandler::_Respond(RimeSessionId session_id, EatLine eat)
 {
 	std::set<std::string> actions;
 	std::list<std::string> messages;
@@ -1231,7 +1231,7 @@ static void _LoadAppOptions(RimeConfig* config, AppOptionsByAppName& app_options
 	RimeConfigEnd(&app_iter);
 }
 
-void RimeWithWeaselHandler::_GetStatus(Status & stat, UINT session_id, Context& ctx)
+void RimeWithWeaselHandler::_GetStatus(Status & stat, RimeSessionId session_id, Context& ctx)
 {
 	RIME_STRUCT(RimeStatus, status);
 	if (RimeGetStatus(session_id, &status))
@@ -1268,7 +1268,7 @@ void RimeWithWeaselHandler::_GetStatus(Status & stat, UINT session_id, Context& 
 	}
 }
 
-void RimeWithWeaselHandler::_GetContext(Context & weasel_context, UINT session_id)
+void RimeWithWeaselHandler::_GetContext(Context & weasel_context, RimeSessionId session_id)
 {
 	RIME_STRUCT(RimeContext, ctx);
 	if (RimeGetContext(session_id, &ctx))
@@ -1295,14 +1295,14 @@ void RimeWithWeaselHandler::_GetContext(Context & weasel_context, UINT session_i
 	}
 }
 
-bool RimeWithWeaselHandler::_IsSessionTSF(UINT session_id)
+bool RimeWithWeaselHandler::_IsSessionTSF(RimeSessionId session_id)
 {
 	static char client_type[20] = { 0 };
 	RimeGetProperty(session_id, "client_type", client_type, sizeof(client_type) - 1);
 	return std::string(client_type) == "tsf";
 }
 
-void RimeWithWeaselHandler::_UpdateInlinePreeditStatus(UINT session_id)
+void RimeWithWeaselHandler::_UpdateInlinePreeditStatus(RimeSessionId session_id)
 {
 	if (!m_ui)	return;
 	// set inline_preedit option

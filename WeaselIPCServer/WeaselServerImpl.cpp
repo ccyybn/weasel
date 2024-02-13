@@ -5,7 +5,7 @@
 #include <WeaselUtility.h>
 
 namespace weasel {
-	class PipeServer : public PipeChannel<DWORD, PipeMessage>
+	class PipeServer : public PipeChannel<size_t, PipeMessage>
 	{
 	public:
 		using ServerRunner = std::function<void()>;
@@ -124,14 +124,14 @@ LRESULT ServerImpl::OnCommand(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHa
 	return 0;
 }
 
-DWORD ServerImpl::OnCommand(WEASEL_IPC_COMMAND uMsg, DWORD wParam, DWORD lParam)
+PARAM ServerImpl::OnCommand(WEASEL_IPC_COMMAND uMsg, PARAM wParam, PARAM lParam)
 {
 	BOOL handled = TRUE;
 	OnCommand(uMsg, wParam, lParam, handled);
 	return handled;
 }
 
-int ServerImpl::Start()
+HWND ServerImpl::Start()
 {
 	std::wstring instanceName = L"(WEASEL)Furandōru-Sukāretto-";
 	instanceName += getUsername();
@@ -145,7 +145,7 @@ int ServerImpl::Start()
 
 	HWND hwnd = Create(NULL);
 
-	return (int)hwnd;
+	return hwnd;
 }
 
 int ServerImpl::Stop()
@@ -184,14 +184,14 @@ int ServerImpl::Run()
 
 
 
-DWORD ServerImpl::OnEcho(WEASEL_IPC_COMMAND uMsg, DWORD wParam, DWORD lParam)
+PARAM ServerImpl::OnEcho(WEASEL_IPC_COMMAND uMsg, PARAM wParam, PARAM lParam)
 {
 	if (!m_pRequestHandler)
 		return 0;
 	return m_pRequestHandler->FindSession(lParam);
 }
 
-DWORD ServerImpl::OnStartSession(WEASEL_IPC_COMMAND uMsg, DWORD wParam, DWORD lParam)
+PARAM ServerImpl::OnStartSession(WEASEL_IPC_COMMAND uMsg, PARAM wParam, PARAM lParam)
 {
 	if (!m_pRequestHandler)
 		return 0;
@@ -204,14 +204,14 @@ DWORD ServerImpl::OnStartSession(WEASEL_IPC_COMMAND uMsg, DWORD wParam, DWORD lP
 	);
 }
 
-DWORD ServerImpl::OnEndSession(WEASEL_IPC_COMMAND uMsg, DWORD wParam, DWORD lParam)
+PARAM ServerImpl::OnEndSession(WEASEL_IPC_COMMAND uMsg, PARAM wParam, PARAM lParam)
 {
 	if (!m_pRequestHandler)
 		return 0;
 	return m_pRequestHandler->RemoveSession(lParam);
 }
 
-DWORD ServerImpl::OnKeyEvent(WEASEL_IPC_COMMAND uMsg, DWORD wParam, DWORD lParam)
+PARAM ServerImpl::OnKeyEvent(WEASEL_IPC_COMMAND uMsg, PARAM wParam, PARAM lParam)
 {
 	if (!m_pRequestHandler/* || !m_pSharedMemory*/)
 		return 0;
@@ -223,13 +223,13 @@ DWORD ServerImpl::OnKeyEvent(WEASEL_IPC_COMMAND uMsg, DWORD wParam, DWORD lParam
 	return m_pRequestHandler->ProcessKeyEvent(KeyEvent(wParam), lParam, eat);
 }
 
-DWORD ServerImpl::OnShutdownServer(WEASEL_IPC_COMMAND uMsg, DWORD wParam, DWORD lParam)
+PARAM ServerImpl::OnShutdownServer(WEASEL_IPC_COMMAND uMsg, PARAM wParam, PARAM lParam)
 {
 	Stop();
 	return 0;
 }
 
-DWORD ServerImpl::OnFocusIn(WEASEL_IPC_COMMAND uMsg, DWORD wParam, DWORD lParam)
+PARAM ServerImpl::OnFocusIn(WEASEL_IPC_COMMAND uMsg, PARAM wParam, PARAM lParam)
 {
 	if (!m_pRequestHandler)
 		return 0;
@@ -237,7 +237,7 @@ DWORD ServerImpl::OnFocusIn(WEASEL_IPC_COMMAND uMsg, DWORD wParam, DWORD lParam)
 	return 0;
 }
 
-DWORD ServerImpl::OnFocusOut(WEASEL_IPC_COMMAND uMsg, DWORD wParam, DWORD lParam)
+PARAM ServerImpl::OnFocusOut(WEASEL_IPC_COMMAND uMsg, PARAM wParam, PARAM lParam)
 {
 	if (!m_pRequestHandler)
 		return 0;
@@ -245,7 +245,7 @@ DWORD ServerImpl::OnFocusOut(WEASEL_IPC_COMMAND uMsg, DWORD wParam, DWORD lParam
 	return 0;
 }
 
-DWORD ServerImpl::OnUpdateInputPosition(WEASEL_IPC_COMMAND uMsg, DWORD wParam, DWORD lParam)
+PARAM ServerImpl::OnUpdateInputPosition(WEASEL_IPC_COMMAND uMsg, PARAM wParam, PARAM lParam)
 {
 	if (!m_pRequestHandler)
 		return 0;
@@ -284,35 +284,35 @@ DWORD ServerImpl::OnUpdateInputPosition(WEASEL_IPC_COMMAND uMsg, DWORD wParam, D
 	return 0;
 }
 
-DWORD ServerImpl::OnStartMaintenance(WEASEL_IPC_COMMAND uMsg, DWORD wParam, DWORD lParam)
+PARAM ServerImpl::OnStartMaintenance(WEASEL_IPC_COMMAND uMsg, PARAM wParam, PARAM lParam)
 {
 	if (m_pRequestHandler)
 		m_pRequestHandler->StartMaintenance();
 	return 0;
 }
 
-DWORD ServerImpl::OnEndMaintenance(WEASEL_IPC_COMMAND uMsg, DWORD wParam, DWORD lParam)
+PARAM ServerImpl::OnEndMaintenance(WEASEL_IPC_COMMAND uMsg, PARAM wParam, PARAM lParam)
 {
 	if (m_pRequestHandler)
 		m_pRequestHandler->EndMaintenance();
 	return 0;
 }
 
-DWORD ServerImpl::OnCommitComposition(WEASEL_IPC_COMMAND uMsg, DWORD wParam, DWORD lParam)
+PARAM ServerImpl::OnCommitComposition(WEASEL_IPC_COMMAND uMsg, PARAM wParam, PARAM lParam)
 {
 	if (m_pRequestHandler)
 		m_pRequestHandler->CommitComposition(lParam);
 	return 0;
 }
 
-DWORD ServerImpl::OnClearComposition(WEASEL_IPC_COMMAND uMsg, DWORD wParam, DWORD lParam)
+PARAM ServerImpl::OnClearComposition(WEASEL_IPC_COMMAND uMsg, PARAM wParam, PARAM lParam)
 {
 	if (m_pRequestHandler)
 		m_pRequestHandler->ClearComposition(lParam);
 	return 0;
 }
 
-DWORD ServerImpl::OnSelectCandidateOnCurrentPage(WEASEL_IPC_COMMAND uMsg, DWORD wParam, DWORD lParam)
+PARAM ServerImpl::OnSelectCandidateOnCurrentPage(WEASEL_IPC_COMMAND uMsg, PARAM wParam, PARAM lParam)
 {
 	if(m_pRequestHandler)
 		m_pRequestHandler->SelectCandidateOnCurrentPage(wParam, lParam);
@@ -320,8 +320,8 @@ DWORD ServerImpl::OnSelectCandidateOnCurrentPage(WEASEL_IPC_COMMAND uMsg, DWORD 
 }
 
 #define MAP_PIPE_MSG_HANDLE(__msg, __wParam, __lParam) {\
-auto lParam = __lParam;\
-auto wParam = __wParam;\
+PARAM lParam = __lParam;\
+PARAM wParam = __wParam;\
 LRESULT _result = 0;\
 switch (__msg) {\
 
@@ -335,7 +335,7 @@ case __msg:\
 template<typename _Resp>
 void ServerImpl::HandlePipeMessage(PipeMessage pipe_msg, _Resp resp)
 {
-	DWORD result;
+	PARAM result;
 
 	MAP_PIPE_MSG_HANDLE(pipe_msg.Msg, pipe_msg.wParam, pipe_msg.lParam)
 		PIPE_MSG_HANDLE(WEASEL_IPC_ECHO, OnEcho)
@@ -372,7 +372,7 @@ void PipeServer::Listen(ServerHandler const &handler)
 				_ProcessPipeThread(pipe, handler);
 			});
 		}
-		catch (DWORD ex) {
+		catch (PARAM ex) {
 			_FinalizePipe(pipe);
 		}
 		boost::this_thread::interruption_point();
@@ -416,7 +416,7 @@ Server::~Server()
 		delete m_pImpl;
 }
 
-int Server::Start()
+HWND Server::Start()
 {
 	return m_pImpl->Start();
 }

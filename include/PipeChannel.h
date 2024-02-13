@@ -5,6 +5,8 @@
 #include <boost/interprocess/streams/bufferstream.hpp>
 #include <boost/thread.hpp>
 
+using RimeSessionId = UINT64;
+
 namespace weasel {
 
 	class PipeChannelBase {
@@ -50,7 +52,7 @@ namespace weasel {
 	/* Pipe based IPC channel */
 	template<
 		typename _TyMsg,
-		typename _TyRes = DWORD,
+		typename _TyRes = UINT64,
 		size_t _MsgSize = sizeof(_TyMsg),
 		size_t _ResSize = sizeof(_TyRes)>
 	class PipeChannel : public PipeChannelBase
