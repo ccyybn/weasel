@@ -93,21 +93,48 @@ if %build_rime% == 0 (
   set build_weasel=1
 )))))
 
+rem quit WeaselServer.exe before building
 cd /d %WEASEL_ROOT%
 if exist output\weaselserver.exe (
   output\weaselserver.exe /q
 )
 
+rem build booost
 if %build_boost% == 1 (
   call :build_boost
   if errorlevel 1 exit /b 1
   cd /d %WEASEL_ROOT%
 )
 
+rem build librime x64 and Win32
 if %build_rime% == 1 (
+  rem build 64 bit librime
   if not exist librime\build.bat (
     git submodule update --init --recursive
   )
+  set ARCH=x64
+  cd %WEASEL_ROOT%\librime
+  rem clean cache before building
+  if exist build ( del /S /Q build )
+  if exist dist ( del /S /Q dist )
+  if exist deps\glog\build ( del /S /Q deps\glog\build )
+  if exist deps\googletest\build ( del /S /Q deps\googletest\build )
+  if exist deps\leveldb\build ( del /S /Q deps\leveldb\build )
+  if exist deps\marisa-trie\build ( del /S /Q deps\marisa-trie\build )
+  if exist deps\opencc\build ( del /S /Q deps\opencc\build )
+  if exist deps\yaml-cpp\build ( del /S /Q deps\yaml-cpp\build )
+  if exist lib ( del /S /Q lib )
+
+  rem restore backuped x64 build
+  if exist build_x64 ( move /y build_x64  build )
+  if exist dist_x64 ( move /y dist_x64 dist )
+  if exist deps\glog\build_x64 ( move /y deps\glog\build_x64  deps\glog\build )
+  if exist deps\googletest\build_x64 ( move /y deps\googletest\build_x64  deps\googletest\build )
+  if exist deps\leveldb\build_x64 ( move /y deps\leveldb\build_x64  deps\leveldb\build )
+  if exist deps\marisa-trie\build_x64 ( move /y deps\marisa-trie\build_x64  deps\marisa-trie\build )
+  if exist deps\opencc\build_x64 ( move /y deps\opencc\build_x64  deps\opencc\build )
+  if exist deps\yaml-cpp\build_x64 ( move /y deps\yaml-cpp\build_x64  deps\yaml-cpp\build )
+  if exist lib_x64 ( move /y lib_x64 lib )
 
   cd %WEASEL_ROOT%\librime
   if not exist env.bat (
@@ -120,13 +147,71 @@ if %build_rime% == 1 (
   call build.bat %rime_build_variant%
   if errorlevel 1 goto error
 
-cd %WEASEL_ROOT%
-  copy /Y librime\dist\include\rime_*.h include\
+  cd %WEASEL_ROOT%
+    copy /Y librime\dist\include\rime_*.h include\
+    if errorlevel 1 goto error
+    copy /Y librime\dist\lib\rime.lib lib64\
+    if errorlevel 1 goto error
+    copy /Y librime\dist\lib\rime.dll output\
+    if errorlevel 1 goto error
+
+  cd %WEASEL_ROOT%\librime
+  rem backup x64 build
+  move /y build build_x64
+  move /y dist dist_x64
+  move /y deps\glog\build deps\glog\build_x64
+  move /y deps\googletest\build deps\googletest\build_x64
+  move /y deps\leveldb\build deps\leveldb\build_x64
+  move /y deps\marisa-trie\build deps\marisa-trie\build_x64
+  move /y deps\opencc\build deps\opencc\build_x64
+  move /y deps\yaml-cpp\build deps\yaml-cpp\build_x64
+  move /y lib lib_x64
+  mkdir lib
+  copy lib_x64\.placeholder lib\
+  rem backup x64 build done
+
+  rem -------------------------------------------------------------------------
+  rem build 32 bit librime
+  set ARCH=Win32
+
+  rem restore backuped Win32 build
+  if exist build_Win32 ( move /y build_Win32  build )
+  if exist dist_Win32 ( move /y dist_Win32 dist )
+  if exist deps\glog\build_Win32 ( move /y deps\glog\build_Win32  deps\glog\build )
+  if exist deps\googletest\build_Win32 ( move /y deps\googletest\build_Win32  deps\googletest\build )
+  if exist deps\leveldb\build_Win32 ( move /y deps\leveldb\build_Win32  deps\leveldb\build )
+  if exist deps\marisa-trie\build_Win32 ( move /y deps\marisa-trie\build_Win32  deps\marisa-trie\build )
+  if exist deps\opencc\build_Win32 ( move /y deps\opencc\build_Win32  deps\opencc\build )
+  if exist deps\yaml-cpp\build_Win32 ( move /y deps\yaml-cpp\build_Win32  deps\yaml-cpp\build )
+  if exist lib_Win32 ( move /y lib_Win32 lib )
+  rem restore backuped Win32 build done
+
+  if not exist lib\opencc.lib (
+    call build.bat deps %rime_build_variant%
+    if errorlevel 1 goto error
+  )
+  call build.bat %rime_build_variant%
   if errorlevel 1 goto error
-  copy /Y librime\dist\lib\rime.lib lib\
-  if errorlevel 1 goto error
-  copy /Y librime\dist\lib\rime.dll output\
-  if errorlevel 1 goto error
+
+  rem backup Win32 build
+  move /y build build_Win32
+  move /y dist dist_Win32
+  move /y deps\glog\build deps\glog\build_Win32
+  move /y deps\googletest\build deps\googletest\build_Win32
+  move /y deps\leveldb\build deps\leveldb\build_Win32
+  move /y deps\marisa-trie\build deps\marisa-trie\build_Win32
+  move /y deps\opencc\build deps\opencc\build_Win32
+  move /y deps\yaml-cpp\build deps\yaml-cpp\build_Win32
+  move /y lib lib_Win32
+  mkdir lib
+  copy lib_Win32\.placeholder lib\
+  rem backup Win32 build done
+
+  cd %WEASEL_ROOT%
+    copy /Y librime\dist_Win32\lib\rime.lib lib\
+    if errorlevel 1 goto error
+    copy /Y librime\dist_Win32\lib\rime.dll output\Win32
+    if errorlevel 1 goto error
 )
 
 if %build_weasel% == 1 (
@@ -200,6 +285,8 @@ if %build_installer% == 1 (
 
 goto end
 
+rem -------------------------------------------------------------------------
+rem build boost
 :build_boost
 
 set BJAM_OPTIONS_COMMON=-j%NUMBER_OF_PROCESSORS%^
@@ -250,6 +337,7 @@ if %build_arm64% == 1 (
 )
 exit /b
 
+rem -------------------------------------------------------------------------
 :build_data
 copy %WEASEL_ROOT%\LICENSE.txt output\
 copy %WEASEL_ROOT%\README.md output\README.txt
@@ -261,6 +349,7 @@ bash plum/rime-install %WEASEL_BUNDLED_RECIPES%
 if errorlevel 1 goto error
 exit /b
 
+rem -------------------------------------------------------------------------
 :build_opencc_data
 if not exist %WEASEL_ROOT%\librime\share\opencc\TSCharacters.ocd2 (
   cd %WEASEL_ROOT%\librime
