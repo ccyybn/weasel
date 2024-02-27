@@ -207,11 +207,18 @@ program_files:
     File /nonfatal "weaseltARM.ime"
     File /nonfatal "weaseltARM64.ime"
   ${EndIf}
-  File "WeaselDeployer.exe"
-  File "WeaselServer.exe"
+  ${If} ${RunningX64}
+		File "WeaselDeployer.exe"
+		File "WeaselServer.exe"
+		File "rime.dll"
+		File "WinSparkle.dll"
+	${Else}
+		File "Win32\WeaselDeployer.exe"
+		File "Win32\WeaselServer.exe"
+		File "Win32\rime.dll"
+		File "Win32\WinSparkle.dll"
+  ${EndIf}
   File "WeaselSetup.exe"
-  File "rime.dll"
-  File "WinSparkle.dll"
   ; shared data files
   SetOutPath $INSTDIR\data
   File "data\*.yaml"
