@@ -153,7 +153,7 @@ void RimeWithWeaselHandler::Finalize() {
   RimeFinalize();
 }
 
-UINT RimeWithWeaselHandler::FindSession(WeaselSessionId ipc_id) {
+DWORD RimeWithWeaselHandler::FindSession(WeaselSessionId ipc_id) {
   if (m_disabled)
     return 0;
   Bool found = RimeFindSession(_s(ipc_id));
@@ -162,7 +162,7 @@ UINT RimeWithWeaselHandler::FindSession(WeaselSessionId ipc_id) {
   return found ? (ipc_id) : 0;
 }
 
-UINT RimeWithWeaselHandler::AddSession(LPWSTR buffer, EatLine eat) {
+DWORD RimeWithWeaselHandler::AddSession(LPWSTR buffer, EatLine eat) {
   if (m_disabled) {
     DLOG(INFO) << "Trying to resume service.";
     EndMaintenance();
@@ -212,7 +212,7 @@ UINT RimeWithWeaselHandler::AddSession(LPWSTR buffer, EatLine eat) {
   return ipc_id;
 }
 
-UINT RimeWithWeaselHandler::RemoveSession(WeaselSessionId ipc_id) {
+DWORD RimeWithWeaselHandler::RemoveSession(WeaselSessionId ipc_id) {
   if (m_ui)
     m_ui->Hide();
   if (m_disabled)

@@ -29,17 +29,17 @@ struct SessionStatus {
   bool __synced;
   RimeSessionId session_id;
 };
-typedef std::map<UINT, SessionStatus> SessionStatusMap;
-typedef UINT WeaselSessionId;
+typedef std::map<DWORD, SessionStatus> SessionStatusMap;
+typedef DWORD WeaselSessionId;
 class RimeWithWeaselHandler : public weasel::RequestHandler {
  public:
   RimeWithWeaselHandler(weasel::UI* ui);
   virtual ~RimeWithWeaselHandler();
   virtual void Initialize();
   virtual void Finalize();
-  virtual UINT FindSession(WeaselSessionId ipc_id);
-  virtual UINT AddSession(LPWSTR buffer, EatLine eat = 0);
-  virtual UINT RemoveSession(WeaselSessionId ipc_id);
+  virtual DWORD FindSession(WeaselSessionId ipc_id);
+  virtual DWORD AddSession(LPWSTR buffer, EatLine eat = 0);
+  virtual DWORD RemoveSession(WeaselSessionId ipc_id);
   virtual BOOL ProcessKeyEvent(weasel::KeyEvent keyEvent,
                                WeaselSessionId ipc_id,
                                EatLine eat);
@@ -82,7 +82,7 @@ class RimeWithWeaselHandler : public weasel::RequestHandler {
 
   AppOptionsByAppName m_app_options;
   weasel::UI* m_ui;  // reference
-  UINT m_active_session;
+  DWORD m_active_session;
   bool m_disabled;
   std::string m_last_schema_id;
   std::string m_last_app_name;
