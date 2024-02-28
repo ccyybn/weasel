@@ -126,15 +126,15 @@ if %build_rime% == 1 (
   if exist lib ( del /S /Q lib )
 
   rem restore backuped x64 build
-  if exist build_x64 ( move /y build_x64  build )
-  if exist dist_x64 ( move /y dist_x64 dist )
-  if exist deps\glog\build_x64 ( move /y deps\glog\build_x64  deps\glog\build )
-  if exist deps\googletest\build_x64 ( move /y deps\googletest\build_x64  deps\googletest\build )
-  if exist deps\leveldb\build_x64 ( move /y deps\leveldb\build_x64  deps\leveldb\build )
-  if exist deps\marisa-trie\build_x64 ( move /y deps\marisa-trie\build_x64  deps\marisa-trie\build )
-  if exist deps\opencc\build_x64 ( move /y deps\opencc\build_x64  deps\opencc\build )
-  if exist deps\yaml-cpp\build_x64 ( move /y deps\yaml-cpp\build_x64  deps\yaml-cpp\build )
-  if exist lib_x64 ( move /y lib_x64 lib )
+  if exist build_x64 ( move build_x64  build )
+  if exist dist_x64 ( move dist_x64 dist )
+  if exist deps\glog\build_x64 ( move deps\glog\build_x64  deps\glog\build )
+  if exist deps\googletest\build_x64 ( move deps\googletest\build_x64  deps\googletest\build )
+  if exist deps\leveldb\build_x64 ( move deps\leveldb\build_x64  deps\leveldb\build )
+  if exist deps\marisa-trie\build_x64 ( move deps\marisa-trie\build_x64  deps\marisa-trie\build )
+  if exist deps\opencc\build_x64 ( move deps\opencc\build_x64  deps\opencc\build )
+  if exist deps\yaml-cpp\build_x64 ( move deps\yaml-cpp\build_x64  deps\yaml-cpp\build )
+  if exist lib_x64 ( move lib_x64 lib )
 
   cd %WEASEL_ROOT%\librime
   if not exist env.bat (
@@ -157,17 +157,16 @@ if %build_rime% == 1 (
 
   cd %WEASEL_ROOT%\librime
   rem backup x64 build
-  move /y build build_x64
-  move /y dist dist_x64
-  move /y deps\glog\build deps\glog\build_x64
-  move /y deps\googletest\build deps\googletest\build_x64
-  move /y deps\leveldb\build deps\leveldb\build_x64
-  move /y deps\marisa-trie\build deps\marisa-trie\build_x64
-  move /y deps\opencc\build deps\opencc\build_x64
-  move /y deps\yaml-cpp\build deps\yaml-cpp\build_x64
-  move /y lib lib_x64
-  mkdir lib
-  copy lib_x64\.placeholder lib\
+  move build build_x64
+  move dist dist_x64
+  move deps\glog\build deps\glog\build_x64
+  move deps\googletest\build deps\googletest\build_x64
+  move deps\leveldb\build deps\leveldb\build_x64
+  move deps\marisa-trie\build deps\marisa-trie\build_x64
+  move deps\opencc\build deps\opencc\build_x64
+  move deps\yaml-cpp\build deps\yaml-cpp\build_x64
+  move lib lib_x64
+  git co .
   rem backup x64 build done
 
   rem -------------------------------------------------------------------------
@@ -175,15 +174,15 @@ if %build_rime% == 1 (
   set ARCH=Win32
 
   rem restore backuped Win32 build
-  if exist build_Win32 ( move /y build_Win32  build )
-  if exist dist_Win32 ( move /y dist_Win32 dist )
-  if exist deps\glog\build_Win32 ( move /y deps\glog\build_Win32  deps\glog\build )
-  if exist deps\googletest\build_Win32 ( move /y deps\googletest\build_Win32  deps\googletest\build )
-  if exist deps\leveldb\build_Win32 ( move /y deps\leveldb\build_Win32  deps\leveldb\build )
-  if exist deps\marisa-trie\build_Win32 ( move /y deps\marisa-trie\build_Win32  deps\marisa-trie\build )
-  if exist deps\opencc\build_Win32 ( move /y deps\opencc\build_Win32  deps\opencc\build )
-  if exist deps\yaml-cpp\build_Win32 ( move /y deps\yaml-cpp\build_Win32  deps\yaml-cpp\build )
-  if exist lib_Win32 ( move /y lib_Win32 lib )
+  if exist build_Win32 ( move build_Win32  build )
+  if exist dist_Win32 ( move dist_Win32 dist )
+  if exist deps\glog\build_Win32 ( move deps\glog\build_Win32  deps\glog\build )
+  if exist deps\googletest\build_Win32 ( move deps\googletest\build_Win32  deps\googletest\build )
+  if exist deps\leveldb\build_Win32 ( move deps\leveldb\build_Win32  deps\leveldb\build )
+  if exist deps\marisa-trie\build_Win32 ( move deps\marisa-trie\build_Win32  deps\marisa-trie\build )
+  if exist deps\opencc\build_Win32 ( move deps\opencc\build_Win32  deps\opencc\build )
+  if exist deps\yaml-cpp\build_Win32 ( move deps\yaml-cpp\build_Win32  deps\yaml-cpp\build )
+  if exist lib_Win32 ( move lib_Win32 lib )
   rem restore backuped Win32 build done
 
   if not exist lib\opencc.lib (
@@ -194,23 +193,22 @@ if %build_rime% == 1 (
   if errorlevel 1 goto error
 
   rem backup Win32 build
-  move /y build build_Win32
-  move /y dist dist_Win32
-  move /y deps\glog\build deps\glog\build_Win32
-  move /y deps\googletest\build deps\googletest\build_Win32
-  move /y deps\leveldb\build deps\leveldb\build_Win32
-  move /y deps\marisa-trie\build deps\marisa-trie\build_Win32
-  move /y deps\opencc\build deps\opencc\build_Win32
-  move /y deps\yaml-cpp\build deps\yaml-cpp\build_Win32
-  move /y lib lib_Win32
-  mkdir lib
-  copy lib_Win32\.placeholder lib\
+  move build build_Win32
+  move dist dist_Win32
+  move deps\glog\build deps\glog\build_Win32
+  move deps\googletest\build deps\googletest\build_Win32
+  move deps\leveldb\build deps\leveldb\build_Win32
+  move deps\marisa-trie\build deps\marisa-trie\build_Win32
+  move deps\opencc\build deps\opencc\build_Win32
+  move deps\yaml-cpp\build deps\yaml-cpp\build_Win32
+  move lib lib_Win32
+  git co .
   rem backup Win32 build done
 
   cd %WEASEL_ROOT%
     copy /Y librime\dist_Win32\lib\rime.lib lib\
     if errorlevel 1 goto error
-    copy /Y librime\dist_Win32\lib\rime.dll output\Win32
+    copy /Y librime\dist_Win32\lib\rime.dll output\Win32\
     if errorlevel 1 goto error
 )
 
