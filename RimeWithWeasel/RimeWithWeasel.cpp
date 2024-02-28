@@ -30,7 +30,7 @@ using namespace weasel;
 
 WeaselSessionId _GenerateNewWeaselSessionId(SessionStatusMap sm, DWORD pid) {
   if (sm.empty())
-	  return (WeaselSessionId)(pid+1);
+    return (WeaselSessionId)(pid + 1);
   return (WeaselSessionId)(sm.rbegin()->first + 1);
 }
 
@@ -48,11 +48,11 @@ RimeWithWeaselHandler::RimeWithWeaselHandler(UI* ui)
       _UpdateUICallback(NULL) {
   m_pid = GetCurrentProcessId();
   uint16_t msbit = 0;
-  for(auto i = 31; i >= 0; i--) {
-	  if (m_pid & (1<<i)){
-		  msbit = i;
-		  break;
-	  }
+  for (auto i = 31; i >= 0; i--) {
+    if (m_pid & (1 << i)) {
+      msbit = i;
+      break;
+    }
   }
   m_pid = (m_pid << (31 - msbit));
   _Setup();
@@ -180,9 +180,10 @@ DWORD RimeWithWeaselHandler::AddSession(LPWSTR buffer, EatLine eat) {
     }
   }
 
-  WeaselSessionId ipc_id = _GenerateNewWeaselSessionId(m_session_status_map, m_pid);
-  DLOG(INFO) << "Add session: created session_id = " << session_id 
-      << ", ipc_id = " << ipc_id;
+  WeaselSessionId ipc_id =
+      _GenerateNewWeaselSessionId(m_session_status_map, m_pid);
+  DLOG(INFO) << "Add session: created session_id = " << session_id
+             << ", ipc_id = " << ipc_id;
   m_session_status_map[ipc_id] = SessionStatus();
   m_session_status_map[ipc_id].style = m_base_style;
   m_session_status_map[ipc_id].session_id = session_id;
@@ -313,8 +314,9 @@ void RimeWithWeaselHandler::ClearComposition(WeaselSessionId ipc_id) {
   m_active_session = ipc_id;
 }
 
-void RimeWithWeaselHandler::SelectCandidateOnCurrentPage(size_t index,
-                                                         WeaselSessionId ipc_id) {
+void RimeWithWeaselHandler::SelectCandidateOnCurrentPage(
+    size_t index,
+    WeaselSessionId ipc_id) {
   DLOG(INFO) << "select candidate on current page, ipc_id = " << ipc_id
              << ", index = " << index;
   if (m_disabled)
@@ -323,11 +325,12 @@ void RimeWithWeaselHandler::SelectCandidateOnCurrentPage(size_t index,
   api->select_candidate_on_current_page(_s(ipc_id), index);
 }
 
-bool RimeWithWeaselHandler::HighlightCandidateOnCurrentPage(size_t index,
-                                                            WeaselSessionId ipc_id,
-                                                            EatLine eat) {
-  DLOG(INFO) << "highlight candidate on current page, ipc_id = "
-             << ipc_id << ", index = " << index;
+bool RimeWithWeaselHandler::HighlightCandidateOnCurrentPage(
+    size_t index,
+    WeaselSessionId ipc_id,
+    EatLine eat) {
+  DLOG(INFO) << "highlight candidate on current page, ipc_id = " << ipc_id
+             << ", index = " << index;
   RimeApi* api = rime_get_api();
   if (!api)
     return false;
@@ -412,7 +415,8 @@ void RimeWithWeaselHandler::OnNotify(void* context_object,
   }
 }
 
-void RimeWithWeaselHandler::_ReadClientInfo(WeaselSessionId ipc_id, LPWSTR buffer) {
+void RimeWithWeaselHandler::_ReadClientInfo(WeaselSessionId ipc_id,
+                                            LPWSTR buffer) {
   std::string app_name;
   std::string client_type;
   // parse request text
@@ -555,11 +559,9 @@ void RimeWithWeaselHandler::_UpdateUI(WeaselSessionId ipc_id) {
     return;
 
   if (RimeGetOption(_s(ipc_id), "inline_preedit"))
-    m_session_status_map[ipc_id].style.client_caps |=
-        INLINE_PREEDIT_CAPABLE;
+    m_session_status_map[ipc_id].style.client_caps |= INLINE_PREEDIT_CAPABLE;
   else
-    m_session_status_map[ipc_id].style.client_caps &=
-        ~INLINE_PREEDIT_CAPABLE;
+    m_session_status_map[ipc_id].style.client_caps &= ~INLINE_PREEDIT_CAPABLE;
 
   if (weasel_status.composing) {
     m_ui->Update(weasel_context, weasel_status);
@@ -681,20 +683,20 @@ void RimeWithWeaselHandler::_LoadAppInlinePreeditSet(WeaselSessionId ipc_id,
     if (it != m_app_options.end()) {
       AppOptions& options(m_app_options[it->first]);
       auto pfind = std::make_shared<bool>(false);
-      std::for_each(
-          options.begin(), options.end(),
-          [ipc_id, pfind, inline_preedit,
-           this](std::pair<const std::string, bool>& pair) {
-            if (pair.first == "inline_preedit") {
-              *pfind = true;
-              RimeSetOption(_s(ipc_id), pair.first.c_str(), Bool(pair.second));
-              m_session_status_map[ipc_id].style.inline_preedit =
-                  Bool(pair.second);
-              if (m_session_status_map[ipc_id].style.inline_preedit !=
-                  inline_preedit)
-                _UpdateInlinePreeditStatus(ipc_id);
-            }
-          });
+      std::for_each(options.begin(), options.end(),
+                    [ipc_id, pfind, inline_preedit,
+                     this](std::pair<const std::string, bool>& pair) {
+                      if (pair.first == "inline_preedit") {
+                        *pfind = true;
+                        RimeSetOption(_s(ipc_id), pair.first.c_str(),
+                                      Bool(pair.second));
+                        m_session_status_map[ipc_id].style.inline_preedit =
+                            Bool(pair.second);
+                        if (m_session_status_map[ipc_id].style.inline_preedit !=
+                            inline_preedit)
+                          _UpdateInlinePreeditStatus(ipc_id);
+                      }
+                    });
       if (!(*pfind)) {
         goto load_schema_inline;
       }
@@ -1469,12 +1471,10 @@ void RimeWithWeaselHandler::_GetStatus(Status& stat,
       m_session_status_map[ipc_id].__synced = false;
       m_last_schema_id = schema_id;
       if (schema_id != ".default") {  // don't load for schema select menu
-        bool inline_preedit =
-            m_session_status_map[ipc_id].style.inline_preedit;
+        bool inline_preedit = m_session_status_map[ipc_id].style.inline_preedit;
         _LoadSchemaSpecificSettings(ipc_id, schema_id);
         _LoadAppInlinePreeditSet(ipc_id, true);
-        if (m_session_status_map[ipc_id].style.inline_preedit !=
-            inline_preedit)
+        if (m_session_status_map[ipc_id].style.inline_preedit != inline_preedit)
           _UpdateInlinePreeditStatus(
               ipc_id);  // in case of inline_preedit set in schema
         _RefreshTrayIcon(

@@ -45,7 +45,8 @@ class RimeWithWeaselHandler : public weasel::RequestHandler {
                                EatLine eat);
   virtual void CommitComposition(WeaselSessionId ipc_id);
   virtual void ClearComposition(WeaselSessionId ipc_id);
-  virtual void SelectCandidateOnCurrentPage(size_t index, WeaselSessionId ipc_id);
+  virtual void SelectCandidateOnCurrentPage(size_t index,
+                                            WeaselSessionId ipc_id);
   virtual bool HighlightCandidateOnCurrentPage(size_t index,
                                                WeaselSessionId ipc_id,
                                                EatLine eat);
@@ -55,7 +56,9 @@ class RimeWithWeaselHandler : public weasel::RequestHandler {
   virtual void UpdateInputPosition(RECT const& rc, WeaselSessionId ipc_id);
   virtual void StartMaintenance();
   virtual void EndMaintenance();
-  virtual void SetOption(WeaselSessionId ipc_id, const std::string& opt, bool val);
+  virtual void SetOption(WeaselSessionId ipc_id,
+                         const std::string& opt,
+                         bool val);
   virtual void UpdateColorTheme(BOOL darkMode);
 
   void OnUpdateUI(std::function<void()> const& cb);
@@ -66,19 +69,26 @@ class RimeWithWeaselHandler : public weasel::RequestHandler {
   void _UpdateUI(WeaselSessionId ipc_id);
   void _LoadSchemaSpecificSettings(WeaselSessionId ipc_id,
                                    const std::string& schema_id);
-  void _LoadAppInlinePreeditSet(WeaselSessionId ipc_id, bool ignore_app_name = false);
+  void _LoadAppInlinePreeditSet(WeaselSessionId ipc_id,
+                                bool ignore_app_name = false);
   bool _ShowMessage(weasel::Context& ctx, weasel::Status& status);
   bool _Respond(WeaselSessionId ipc_id, EatLine eat);
   void _ReadClientInfo(WeaselSessionId ipc_id, LPWSTR buffer);
   void _GetCandidateInfo(weasel::CandidateInfo& cinfo, RimeContext& ctx);
-  void _GetStatus(weasel::Status& stat, WeaselSessionId ipc_id, weasel::Context& ctx);
+  void _GetStatus(weasel::Status& stat,
+                  WeaselSessionId ipc_id,
+                  weasel::Context& ctx);
   void _GetContext(weasel::Context& ctx, RimeSessionId session_id);
   void _UpdateShowNotifications(RimeConfig* config, bool initialize = false);
 
   bool _IsSessionTSF(RimeSessionId session_id);
   void _UpdateInlinePreeditStatus(WeaselSessionId ipc_id);
-  RimeSessionId _s(WeaselSessionId ipc_id) { return (m_session_status_map[ipc_id].session_id); }
-  SessionStatus& _session_status(WeaselSessionId ipc_id) { return m_session_status_map[ipc_id]; }
+  RimeSessionId _s(WeaselSessionId ipc_id) {
+    return (m_session_status_map[ipc_id].session_id);
+  }
+  SessionStatus& _session_status(WeaselSessionId ipc_id) {
+    return m_session_status_map[ipc_id];
+  }
 
   AppOptionsByAppName m_app_options;
   weasel::UI* m_ui;  // reference
