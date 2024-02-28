@@ -69,7 +69,7 @@ jobs:
         with:
           path: |
             librime
-          key: ${{ runner.os }}-librime-${{ env.librime_id }}
+          key: ${{ runner.os }}-librime-${{ env.librime_id }}-dual
 
       # build librime if not cached
       - name: Build librime
