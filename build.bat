@@ -166,7 +166,7 @@ if %build_rime% == 1 (
   move deps\opencc\build deps\opencc\build_x64
   move deps\yaml-cpp\build deps\yaml-cpp\build_x64
   move lib lib_x64
-  git co .
+  git checkout .
   rem backup x64 build done
 
   rem -------------------------------------------------------------------------
@@ -202,7 +202,7 @@ if %build_rime% == 1 (
   move deps\opencc\build deps\opencc\build_Win32
   move deps\yaml-cpp\build deps\yaml-cpp\build_Win32
   move lib lib_Win32
-  git co .
+  git checkout .
   rem backup Win32 build done
 
   cd %WEASEL_ROOT%
