@@ -207,7 +207,7 @@ program_files:
     File /nonfatal "weaseltARM.ime"
     File /nonfatal "weaseltARM64.ime"
   ${EndIf}
-  ${If} ${RunningX64}
+  ${If} ${IsNativeAMD64}
 		File "WeaselDeployer.exe"
 		File "WeaselServer.exe"
 		File "rime.dll"
