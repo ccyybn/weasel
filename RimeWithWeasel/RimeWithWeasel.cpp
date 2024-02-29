@@ -257,7 +257,7 @@ void RimeWithWeaselHandler::UpdateColorTheme(BOOL darkMode) {
 
   for (auto& pair : m_session_status_map) {
     RIME_STRUCT(RimeStatus, status);
-    if (RimeGetStatus(pair.first, &status)) {
+    if (RimeGetStatus(_s(pair.first), &status)) {
       _LoadSchemaSpecificSettings(pair.first, std::string(status.schema_id));
       _LoadAppInlinePreeditSet(pair.first, true);
       _UpdateInlinePreeditStatus(pair.first);
