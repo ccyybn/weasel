@@ -106,112 +106,36 @@ if %build_boost% == 1 (
   cd /d %WEASEL_ROOT%
 )
 
+rem -------------------------------------------------------------------------
 rem build librime x64 and Win32
 if %build_rime% == 1 (
-  rem build 64 bit librime
   if not exist librime\build.bat (
     git submodule update --init --recursive
   )
-  set ARCH=x64
   cd %WEASEL_ROOT%\librime
   rem clean cache before building
-  if exist build ( del /S /Q build )
-  if exist dist ( del /S /Q dist )
-  if exist deps\glog\build ( del /S /Q deps\glog\build )
-  if exist deps\googletest\build ( del /S /Q deps\googletest\build )
-  if exist deps\leveldb\build ( del /S /Q deps\leveldb\build )
-  if exist deps\marisa-trie\build ( del /S /Q deps\marisa-trie\build )
-  if exist deps\opencc\build ( del /S /Q deps\opencc\build )
-  if exist deps\yaml-cpp\build ( del /S /Q deps\yaml-cpp\build )
-  if exist lib ( del /S /Q lib )
-
-  rem restore backuped x64 build
-  if exist build_x64 ( move build_x64  build )
-  if exist dist_x64 ( move dist_x64 dist )
-  if exist deps\glog\build_x64 ( move deps\glog\build_x64  deps\glog\build )
-  if exist deps\googletest\build_x64 ( move deps\googletest\build_x64  deps\googletest\build )
-  if exist deps\leveldb\build_x64 ( move deps\leveldb\build_x64  deps\leveldb\build )
-  if exist deps\marisa-trie\build_x64 ( move deps\marisa-trie\build_x64  deps\marisa-trie\build )
-  if exist deps\opencc\build_x64 ( move deps\opencc\build_x64  deps\opencc\build )
-  if exist deps\yaml-cpp\build_x64 ( move deps\yaml-cpp\build_x64  deps\yaml-cpp\build )
-  if exist lib_x64 ( move lib_x64 lib )
-
-  cd %WEASEL_ROOT%\librime
-  if not exist env.bat (
-    copy %WEASEL_ROOT%\env.bat env.bat
+  for %%a in ( build dist lib ^
+    deps\glog\build ^
+    deps\googletest\build ^
+    deps\leveldb\build ^
+    deps\marisa-trie\build ^
+    deps\opencc\build ^
+    deps\yaml-cpp\build ) do (
+      if exist %%a rd /s /q %%a
   )
-  if not exist lib\opencc.lib (
-    call build.bat deps %rime_build_variant%
-    if errorlevel 1 goto error
-  )
-  call build.bat %rime_build_variant%
-  if errorlevel 1 goto error
 
-  cd %WEASEL_ROOT%
-    copy /Y librime\dist\include\rime_*.h include\
-    if errorlevel 1 goto error
-    copy /Y librime\dist\lib\rime.lib lib64\
-    if errorlevel 1 goto error
-    copy /Y librime\dist\lib\rime.dll output\
-    if errorlevel 1 goto error
-
-  cd %WEASEL_ROOT%\librime
-  rem backup x64 build
-  move build build_x64
-  move dist dist_x64
-  move deps\glog\build deps\glog\build_x64
-  move deps\googletest\build deps\googletest\build_x64
-  move deps\leveldb\build deps\leveldb\build_x64
-  move deps\marisa-trie\build deps\marisa-trie\build_x64
-  move deps\opencc\build deps\opencc\build_x64
-  move deps\yaml-cpp\build deps\yaml-cpp\build_x64
-  move lib lib_x64
-  git checkout .
-  rem backup x64 build done
-
-  rem -------------------------------------------------------------------------
-  rem build 32 bit librime
+  rem build x64 librime
+  set ARCH=x64
+  call :build_librime_platform x64 %WEASEL_ROOT%\lib64 %WEASEL_ROOT%\output
+  rem build Win32 librime
   set ARCH=Win32
-
-  rem restore backuped Win32 build
-  if exist build_Win32 ( move build_Win32  build )
-  if exist dist_Win32 ( move dist_Win32 dist )
-  if exist deps\glog\build_Win32 ( move deps\glog\build_Win32  deps\glog\build )
-  if exist deps\googletest\build_Win32 ( move deps\googletest\build_Win32  deps\googletest\build )
-  if exist deps\leveldb\build_Win32 ( move deps\leveldb\build_Win32  deps\leveldb\build )
-  if exist deps\marisa-trie\build_Win32 ( move deps\marisa-trie\build_Win32  deps\marisa-trie\build )
-  if exist deps\opencc\build_Win32 ( move deps\opencc\build_Win32  deps\opencc\build )
-  if exist deps\yaml-cpp\build_Win32 ( move deps\yaml-cpp\build_Win32  deps\yaml-cpp\build )
-  if exist lib_Win32 ( move lib_Win32 lib )
-  rem restore backuped Win32 build done
-
-  if not exist lib\opencc.lib (
-    call build.bat deps %rime_build_variant%
-    if errorlevel 1 goto error
-  )
-  call build.bat %rime_build_variant%
-  if errorlevel 1 goto error
-
-  rem backup Win32 build
-  move build build_Win32
-  move dist dist_Win32
-  move deps\glog\build deps\glog\build_Win32
-  move deps\googletest\build deps\googletest\build_Win32
-  move deps\leveldb\build deps\leveldb\build_Win32
-  move deps\marisa-trie\build deps\marisa-trie\build_Win32
-  move deps\opencc\build deps\opencc\build_Win32
-  move deps\yaml-cpp\build deps\yaml-cpp\build_Win32
-  move lib lib_Win32
-  git checkout .
-  rem backup Win32 build done
-
-  cd %WEASEL_ROOT%
-    copy /Y librime\dist_Win32\lib\rime.lib lib\
-    if errorlevel 1 goto error
-    copy /Y librime\dist_Win32\lib\rime.dll output\Win32\
-    if errorlevel 1 goto error
+  call :build_librime_platform Win32 %WEASEL_ROOT%\lib %WEASEL_ROOT%\output\Win32
+  rem clean the modified file
+  rem git checkout .
+  rem git submodule foreach git checkout .
 )
 
+rem -------------------------------------------------------------------------
 if %build_weasel% == 1 (
   if not exist output\data\essay.txt (
     set build_data=1
@@ -286,81 +210,141 @@ goto end
 rem -------------------------------------------------------------------------
 rem build boost
 :build_boost
-
-set BJAM_OPTIONS_COMMON=-j%NUMBER_OF_PROCESSORS%^
- --with-filesystem^
- --with-json^
- --with-locale^
- --with-regex^
- --with-serialization^
- --with-system^
- --with-thread^
- define=BOOST_USE_WINAPI_VERSION=0x0603^
- toolset=%BJAM_TOOLSET%^
- link=static^
- runtime-link=static^
- --build-type=complete
-
-set BJAM_OPTIONS_X86=%BJAM_OPTIONS_COMMON%^
- architecture=x86^
- address-model=32
-
-set BJAM_OPTIONS_X64=%BJAM_OPTIONS_COMMON%^
- architecture=x86^
- address-model=64
-
-set BJAM_OPTIONS_ARM32=%BJAM_OPTIONS_COMMON%^
- define=BOOST_USE_WINAPI_VERSION=0x0A00^
- architecture=arm^
- address-model=32
-
-set BJAM_OPTIONS_ARM64=%BJAM_OPTIONS_COMMON%^
- define=BOOST_USE_WINAPI_VERSION=0x0A00^
- architecture=arm^
- address-model=64
-
-cd /d %BOOST_ROOT%
-if not exist b2.exe call bootstrap.bat
-if errorlevel 1 goto error
-b2 %BJAM_OPTIONS_X86% stage %BOOST_COMPILED_LIBS%
-if errorlevel 1 goto error
-b2 %BJAM_OPTIONS_X64% stage %BOOST_COMPILED_LIBS%
-if errorlevel 1 goto error
-
-if %build_arm64% == 1 (
-  b2 %BJAM_OPTIONS_ARM32% stage %BOOST_COMPILED_LIBS%
+  set BJAM_OPTIONS_COMMON=-j%NUMBER_OF_PROCESSORS%^
+    --with-filesystem^
+    --with-json^
+    --with-locale^
+    --with-regex^
+    --with-serialization^
+    --with-system^
+    --with-thread^
+    define=BOOST_USE_WINAPI_VERSION=0x0603^
+    toolset=%BJAM_TOOLSET%^
+    link=static^
+    runtime-link=static^
+    --build-type=complete
+  
+  set BJAM_OPTIONS_X86=%BJAM_OPTIONS_COMMON%^
+    architecture=x86^
+    address-model=32
+  
+  set BJAM_OPTIONS_X64=%BJAM_OPTIONS_COMMON%^
+    architecture=x86^
+    address-model=64
+  
+  set BJAM_OPTIONS_ARM32=%BJAM_OPTIONS_COMMON%^
+    define=BOOST_USE_WINAPI_VERSION=0x0A00^
+    architecture=arm^
+    address-model=32
+  
+  set BJAM_OPTIONS_ARM64=%BJAM_OPTIONS_COMMON%^
+    define=BOOST_USE_WINAPI_VERSION=0x0A00^
+    architecture=arm^
+    address-model=64
+  
+  cd /d %BOOST_ROOT%
+  if not exist b2.exe call bootstrap.bat
   if errorlevel 1 goto error
-  b2 %BJAM_OPTIONS_ARM64% stage %BOOST_COMPILED_LIBS%
+  b2 %BJAM_OPTIONS_X86% stage %BOOST_COMPILED_LIBS%
   if errorlevel 1 goto error
-)
-exit /b
+  b2 %BJAM_OPTIONS_X64% stage %BOOST_COMPILED_LIBS%
+  if errorlevel 1 goto error
+  
+  if %build_arm64% == 1 (
+    b2 %BJAM_OPTIONS_ARM32% stage %BOOST_COMPILED_LIBS%
+    if errorlevel 1 goto error
+    b2 %BJAM_OPTIONS_ARM64% stage %BOOST_COMPILED_LIBS%
+    if errorlevel 1 goto error
+  )
+  exit /b
 
-rem -------------------------------------------------------------------------
+rem ---------------------------------------------------------------------------
 :build_data
-copy %WEASEL_ROOT%\LICENSE.txt output\
-copy %WEASEL_ROOT%\README.md output\README.txt
-copy %WEASEL_ROOT%\plum\rime-install.bat output\
-set plum_dir=plum
-set rime_dir=output/data
-set WSLENV=plum_dir:rime_dir
-bash plum/rime-install %WEASEL_BUNDLED_RECIPES%
-if errorlevel 1 goto error
-exit /b
-
-rem -------------------------------------------------------------------------
-:build_opencc_data
-if not exist %WEASEL_ROOT%\librime\share\opencc\TSCharacters.ocd2 (
-  cd %WEASEL_ROOT%\librime
-  call build.bat deps %rime_build_variant%
+  copy %WEASEL_ROOT%\LICENSE.txt output\
+  copy %WEASEL_ROOT%\README.md output\README.txt
+  copy %WEASEL_ROOT%\plum\rime-install.bat output\
+  set plum_dir=plum
+  set rime_dir=output/data
+  set WSLENV=plum_dir:rime_dir
+  bash plum/rime-install %WEASEL_BUNDLED_RECIPES%
   if errorlevel 1 goto error
-)
-cd %WEASEL_ROOT%
-if not exist output\data\opencc mkdir output\data\opencc
-copy %WEASEL_ROOT%\librime\share\opencc\*.* output\data\opencc\
-if errorlevel 1 goto error
-exit /b
+  exit /b
+
+rem ---------------------------------------------------------------------------
+:build_opencc_data
+  if not exist %WEASEL_ROOT%\librime\share\opencc\TSCharacters.ocd2 (
+    cd %WEASEL_ROOT%\librime
+    call build.bat deps %rime_build_variant%
+    if errorlevel 1 goto error
+  )
+  cd %WEASEL_ROOT%
+  if not exist output\data\opencc mkdir output\data\opencc
+  copy %WEASEL_ROOT%\librime\share\opencc\*.* output\data\opencc\
+  if errorlevel 1 goto error
+  exit /b
+
+rem ---------------------------------------------------------------------------
+rem %1 : ARCH
+rem %2 : push | pop , push to backup when pop to restore
+:stash_build
+  pushd %WEASEL_ROOT%\librime
+  for %%a in ( build dist lib ^
+    deps\glog\build ^
+    deps\googletest\build ^
+    deps\leveldb\build ^
+    deps\marisa-trie\build ^
+    deps\opencc\build ^
+    deps\yaml-cpp\build ) do (
+    if "%2"=="push" (
+      if exist %%a  move %%a %%a_%1 
+    )
+    if "%2"=="pop" (
+      if exist %%a_%1  move %%a_%1 %%a 
+    )
+  )
+  popd
+  exit /b
+
+rem ---------------------------------------------------------------------------
+rem %1 : ARCH
+rem %2 : target_path of rime.lib, base %WEASEL_ROOT% or abs path
+rem %3 : target_path of rime.dll, base %WEASEL_ROOT% or abs path
+:build_librime_platform
+  rem restore backuped %1 build
+  call :stash_build %1 pop
+
+  cd %WEASEL_ROOT%\librime
+  if not exist env.bat (
+    copy %WEASEL_ROOT%\env.bat env.bat
+  )
+  if not exist lib\opencc.lib (
+    call build.bat deps %rime_build_variant%
+    if errorlevel 1 (
+      call :stash_build %1 push
+      goto error
+    )
+  )
+  call build.bat %rime_build_variant%
+  if errorlevel 1 (
+    call :stash_build %1 push
+    goto error
+  )
+
+  cd %WEASEL_ROOT%\librime
+  call :stash_build %1 push
+
+  copy /Y %WEASEL_ROOT%\librime\dist_%1\include\rime_*.h %WEASEL_ROOT%\include\
+  if errorlevel 1 goto error
+  copy /Y %WEASEL_ROOT%\librime\dist_%1\lib\rime.lib %2\
+  if errorlevel 1 goto error
+  copy /Y %WEASEL_ROOT%\librime\dist_%1\lib\rime.dll %3\
+  if errorlevel 1 goto error
+
+  exit /b
+rem ---------------------------------------------------------------------------
 
 :error
+
 echo error building weasel...
 
 :end
