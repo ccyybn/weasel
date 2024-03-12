@@ -100,17 +100,21 @@ int WINAPI _tWinMain(HINSTANCE hInstance,
     weasel::Client client;
     if (client.Connect())  // try to connect to running server
     {
-      client.ShutdownServer();
-      if (quit)
-        return 0;
-      int retry = 0;
-      while (client.Connect() && retry < 10) {
+      // client.ShutdownServer();
+      // if (quit)
+      //   return 0;
+      // int retry = 0;
+      // while (client.Connect() && retry < 10) {
+      //   client.ShutdownServer();
+      //   retry++;
+      //   Sleep(50);
+      // }
+      // if (retry >= 10)
+      //   return 0;
+      if (quit) {
         client.ShutdownServer();
-        retry++;
-        Sleep(50);
       }
-      if (retry >= 10)
-        return 0;
+      return 0;
     } else if (quit)
       return 0;
   }
