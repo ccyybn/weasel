@@ -31,7 +31,10 @@ enum WEASEL_IPC_COMMAND {
   WEASEL_IPC_SELECT_CANDIDATE_ON_CURRENT_PAGE,
   WEASEL_IPC_HIGHLIGHT_CANDIDATE_ON_CURRENT_PAGE,
   WEASEL_IPC_CHANGE_PAGE,
-  WEASEL_IPC_LAST_COMMAND
+  WEASEL_IPC_LAST_COMMAND,
+  WEASEL_IPC_SET_OPTIONS,
+  WEASEL_IPC_SAVE_OPTIONS,
+  WEASEL_IPC_SELECT_SCHEMA
 };
 
 namespace weasel {
@@ -39,6 +42,7 @@ struct PipeMessage {
   WEASEL_IPC_COMMAND Msg;
   DWORD wParam;
   DWORD lParam;
+  DWORD vParam;
 };
 
 struct IPCMetadata {
@@ -90,6 +94,10 @@ struct RequestHandler {
   virtual void StartMaintenance() {}
   virtual void EndMaintenance() {}
   virtual void SetOption(DWORD session_id, const std::string& opt, bool val) {}
+  virtual void SaveOption(DWORD session_id, const std::string& opt, bool val) {}
+  virtual void SetOptions(DWORD session_id, DWORD options, DWORD values) {}
+  virtual void SaveOptions(DWORD session_id, DWORD options, DWORD values) {}
+  virtual void SelectSchema(DWORD session_id, DWORD schema_index) {}
   virtual void UpdateColorTheme(BOOL darkMode) {}
 };
 
@@ -152,6 +160,10 @@ class Client {
   void TrayCommand(UINT menuId);
   // 读取server返回的数据
   bool GetResponseData(ResponseHandler handler);
+
+  void SetOptions(DWORD options, DWORD values);
+  void SaveOptions(DWORD options, DWORD values);
+  void SelectSchema(DWORD schema_index);
 
  private:
   ClientImpl* m_pImpl;

@@ -1,8 +1,10 @@
 ﻿#include "stdafx.h"
 #include "WeaselServerImpl.h"
+#include <RimeWithWeasel.h>
 #include <Windows.h>
 #include <resource.h>
 #include <WeaselUtility.h>
+#include <bitset>
 
 namespace weasel {
 class PipeServer : public PipeChannel<DWORD, PipeMessage> {
@@ -355,6 +357,41 @@ DWORD ServerImpl::OnChangePage(WEASEL_IPC_COMMAND uMsg,
   return 0;
 }
 
+DWORD ServerImpl::OnSetOptions(WEASEL_IPC_COMMAND uMsg,
+                               DWORD wParam,
+                               DWORD lParam,
+                               DWORD vParam) {
+  OutputDebugStringA(
+      ("[WeaselServerImpl][SET][Session Id: " + std::to_string(lParam) + "][" +
+       tobitstrA(wParam) + "]" + " -> [" + tobitstrA(vParam) + "]")
+          .c_str());
+  m_pRequestHandler->SetOptions(lParam, wParam, vParam);
+  return 0;
+}
+
+DWORD ServerImpl::OnSaveOptions(WEASEL_IPC_COMMAND uMsg,
+                                DWORD wParam,
+                                DWORD lParam,
+                                DWORD vParam) {
+  OutputDebugStringA(
+      ("[WeaselServerImpl][SAVE][Session Id: " + std::to_string(lParam) + "][" +
+       tobitstrA(wParam) + "]" + " -> [" + tobitstrA(vParam) + "]")
+          .c_str());
+  m_pRequestHandler->SaveOptions(lParam, wParam, vParam);
+  return 0;
+}
+
+DWORD ServerImpl::OnSelectSchema(WEASEL_IPC_COMMAND uMsg,
+                                 DWORD wParam,
+                                 DWORD lParam) {
+  OutputDebugStringA(
+      ("[WeaselServerImpl][Schema][Session Id: " + std::to_string(lParam) +
+       "][" + std::to_string(wParam) + "]")
+          .c_str());
+  m_pRequestHandler->SelectSchema(lParam, wParam);
+  return 0;
+}
+
 #define MAP_PIPE_MSG_HANDLE(__msg, __wParam, __lParam) \
   {                                                    \
     auto lParam = __lParam;                            \
@@ -395,6 +432,20 @@ void ServerImpl::HandlePipeMessage(PipeMessage pipe_msg, _Resp resp) {
   PIPE_MSG_HANDLE(WEASEL_IPC_CHANGE_PAGE, OnChangePage);
   PIPE_MSG_HANDLE(WEASEL_IPC_TRAY_COMMAND, OnCommand);
   END_MAP_PIPE_MSG_HANDLE(result);
+
+  switch (pipe_msg.Msg) {
+    case WEASEL_IPC_SET_OPTIONS:
+      result = OnSetOptions(pipe_msg.Msg, pipe_msg.wParam, pipe_msg.lParam,
+                            pipe_msg.vParam);
+      break;
+    case WEASEL_IPC_SAVE_OPTIONS:
+      result = OnSaveOptions(pipe_msg.Msg, pipe_msg.wParam, pipe_msg.lParam,
+                             pipe_msg.vParam);
+      break;
+    case WEASEL_IPC_SELECT_SCHEMA:
+      result = OnSelectSchema(pipe_msg.Msg, pipe_msg.wParam, pipe_msg.lParam);
+      break;
+  }
 
   resp(result);
 }

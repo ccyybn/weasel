@@ -27,12 +27,19 @@ class ClientImpl {
   void FocusIn();
   void FocusOut();
   void TrayCommand(UINT menuId);
+  void SetOptions(DWORD options, DWORD values);
+  void SaveOptions(DWORD options, DWORD values);
+  void SelectSchema(DWORD schema_index);
   bool GetResponseData(ResponseHandler const& handler);
 
  protected:
   void _InitializeClientInfo();
   bool _WriteClientInfo();
 
+  LRESULT _SendMessage(WEASEL_IPC_COMMAND Msg,
+                       DWORD wParam,
+                       DWORD lParam,
+                       DWORD vParam);
   LRESULT _SendMessage(WEASEL_IPC_COMMAND Msg, DWORD wParam, DWORD lParam);
 
   bool _Connected() const { return channel.Connected(); }

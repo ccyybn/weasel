@@ -339,6 +339,8 @@ Section "Uninstall"
     SetRegView 64
   ${Endif}
   DeleteRegValue HKLM "Software\Microsoft\Windows\CurrentVersion\Run" "WeaselServer"
+  DeleteRegKey HKLM SOFTWARE\Rime
+  DeleteRegKey HKCU SOFTWARE\Rime
 
   ; Remove files and uninstaller
   SetOutPath $TEMP

@@ -157,6 +157,10 @@ struct Status {
   void reset() {
     schema_name.clear();
     schema_id.clear();
+    schema_list.clear();
+    schema_list_size.clear();
+    option_list.clear();
+    option_list_size.clear();
     ascii_mode = false;
     composing = false;
     disabled = false;
@@ -173,6 +177,10 @@ struct Status {
   std::wstring schema_name;
   // 輸入方案 id
   std::wstring schema_id;
+  std::wstring schema_list;
+  std::wstring schema_list_size;
+  std::wstring option_list;
+  std::wstring option_list_size;
   // 轉換開關
   bool ascii_mode;
   // 寫作狀態
@@ -181,6 +189,7 @@ struct Status {
   bool disabled;
   // 全角状态
   bool full_shape;
+  std::wstring options;
   // 图标类型, schema/full_shape
   IconType type;
 };
