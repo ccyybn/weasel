@@ -1,6 +1,6 @@
 //{{NO_DEPENDENCIES}}
-// Microsoft Visual C++ Éú³ÉµÄ°üº¬ÎÄ¼þ¡£
-// ¹© WeaselServer.rc Ê¹ÓÃ
+// Microsoft Visual C++ ï¿½ï¿½ï¿½ÉµÄ°ï¿½ï¿½ï¿½ï¿½Ä¼ï¿½ï¿½ï¿½
+// ï¿½ï¿½ WeaselServer.rc Ê¹ï¿½ï¿½
 //
 #define IDI_WEASEL                      100
 #define IDI_EN                          101
@@ -23,6 +23,8 @@
 #define ID_WEASELTRAY_SYNC              40012
 #define ID_WEASELTRAY_ENABLE_ASCII      40013
 #define ID_WEASELTRAY_DISABLE_ASCII     40014
+#define ID_WEASELTRAY_RERUN_SERVICE     40015
+#define ID_WEASELTRAY_GUARDIAN		    40016
 
 // Next default values for new objects
 // 

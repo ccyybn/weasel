@@ -13,7 +13,7 @@ STDAPI WeaselTSF::DoEditSession(TfEditCookie ec) {
 
   bool ok = m_client.GetResponseData(std::ref(parser));
 
-  _UpdateLanguageBar(_status);
+  _UpdateLanguageBar(L"DoEditSession", _status);
 
   if (ok) {
     if (!commit.empty()) {

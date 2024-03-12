@@ -34,21 +34,6 @@ static void HMENU2ITfMenu(HMENU hMenu, ITfMenu* pTfMenu) {
   }
 }
 
-static LONG RegGetStringValue(HKEY key,
-                              LPCWSTR lpSubKey,
-                              LPCWSTR lpValue,
-                              std::wstring& value) {
-  TCHAR szValue[MAX_PATH];
-  DWORD dwBufLen = MAX_PATH;
-
-  LONG lRes = RegGetValue(key, lpSubKey, lpValue, RRF_RT_REG_SZ, NULL, szValue,
-                          &dwBufLen);
-  if (lRes == ERROR_SUCCESS) {
-    value = std::wstring(szValue);
-  }
-  return lRes;
-}
-
 static LPCWSTR GetWeaselRegName() {
   LPCWSTR WEASEL_REG_NAME_;
   if (is_wow64())
@@ -187,6 +172,9 @@ STDAPI CLangBarItemButton::OnClick(TfLBIClick click,
                ? LoadMenuW(g_hInst, MAKEINTRESOURCE(IDR_MENU_POPUP))
                : LoadMenuW(g_hInst, MAKEINTRESOURCE(IDR_MENU_POPUP_HANT)));
       HMENU popupMenu = GetSubMenu(menu, 0);
+      CheckMenuItem(popupMenu, ID_WEASELTRAY_GUARDIAN,
+                    MF_BYCOMMAND | (_pTextService->_IsGuard() ? MF_CHECKED
+                                                              : MF_UNCHECKED));
       UINT wID = TrackPopupMenuEx(
           popupMenu, TPM_NONOTIFY | TPM_RETURNCMD | TPM_HORPOSANIMATION, pt.x,
           pt.y, hwnd, NULL);
@@ -329,6 +317,14 @@ void WeaselTSF::_HandleLangBarMenuSelect(UINT wID) {
         explore(dir);
       }
       break;
+    case ID_WEASELTRAY_GUARDIAN: {
+      BOOL isGuard = _IsGuard();
+      if (isGuard) {
+        _SwitchGuard(FALSE);
+      } else {
+        _SwitchGuard(TRUE);
+      }
+    } break;
     case ID_WEASELTRAY_WIKI:
       open(L"https://rime.im/docs/");
       break;
@@ -402,7 +398,28 @@ void WeaselTSF::_UninitLanguageBar() {
   _pLangBarButton = NULL;
 }
 
-void WeaselTSF::_UpdateLanguageBar(weasel::Status stat) {
+void WeaselTSF::_UpdateLanguageBar(const std::wstring& callFrom,
+                                   weasel::Status stat) {
+  if (!stat.composing && !stat.options.empty()) {
+    std::wstring log = L"[WeaselTSF][" + callFrom + L"][BackUpStatus]";
+
+    if (_allOptions.empty() ||
+        _backupStatus.option_list.compare(stat.option_list)) {
+      _allOptions = split2set(ws2s(stat.option_list), ",");
+    }
+    _backupStatus = stat;
+    _isBackupStatusInitialized = true;
+
+    // logger(log, L"schema_list[" + _backupStatus.schema_list + L"][" +
+    // _backupStatus.schema_list_size + L"]"); logger(log, L"option_list[" +
+    // _backupStatus.option_list + L"][" + _backupStatus.option_list_size +
+    // L"][" + std::to_wstring(_allOptions.size()) + L"]"); logger(log,
+    // L"schema_id[" + _backupStatus.schema_id + L"],composing[" +
+    // std::to_wstring(_backupStatus.composing) + L"],ascii_mode[" +
+    // std::to_wstring(_backupStatus.ascii_mode) + L"],full_shape[" +
+    // std::to_wstring(_backupStatus.full_shape) + L"]"); logger(log,
+    // L"options[" + tobitstr(options) + L"]");
+  }
   if (!_pLangBarButton)
     return;
   DWORD flags;

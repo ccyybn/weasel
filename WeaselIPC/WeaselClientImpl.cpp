@@ -142,6 +142,18 @@ void ClientImpl::TrayCommand(UINT menuId) {
   _SendMessage(WEASEL_IPC_TRAY_COMMAND, menuId, session_id);
 }
 
+void ClientImpl::SetOptions(DWORD options, DWORD values) {
+  _SendMessage(WEASEL_IPC_SET_OPTIONS, options, session_id, values);
+}
+
+void ClientImpl::SaveOptions(DWORD options, DWORD values) {
+  _SendMessage(WEASEL_IPC_SAVE_OPTIONS, options, session_id, values);
+}
+
+void ClientImpl::SelectSchema(DWORD schema_index) {
+  _SendMessage(WEASEL_IPC_SELECT_SCHEMA, schema_index, session_id);
+}
+
 void ClientImpl::StartSession() {
   if (_Active() && Echo())
     return;
@@ -192,13 +204,20 @@ bool ClientImpl::_WriteClientInfo() {
 
 LRESULT ClientImpl::_SendMessage(WEASEL_IPC_COMMAND Msg,
                                  DWORD wParam,
-                                 DWORD lParam) {
+                                 DWORD lParam,
+                                 DWORD vParam) {
   try {
-    PipeMessage req{Msg, wParam, lParam};
+    PipeMessage req{Msg, wParam, lParam, vParam};
     return channel.Transact(req);
   } catch (DWORD /* ex */) {
     return 0;
   }
+}
+
+LRESULT ClientImpl::_SendMessage(WEASEL_IPC_COMMAND Msg,
+                                 DWORD wParam,
+                                 DWORD lParam) {
+  return _SendMessage(Msg, wParam, lParam, 0);
 }
 
 Client::Client() : m_pImpl(new ClientImpl()) {}
@@ -282,4 +301,16 @@ bool Client::Echo() {
 
 bool Client::GetResponseData(ResponseHandler handler) {
   return m_pImpl->GetResponseData(handler);
+}
+
+void Client::SetOptions(DWORD options, DWORD values) {
+  return m_pImpl->SetOptions(options, values);
+}
+
+void Client::SaveOptions(DWORD options, DWORD values) {
+  return m_pImpl->SaveOptions(options, values);
+}
+
+void Client::SelectSchema(DWORD schema_index) {
+  return m_pImpl->SelectSchema(schema_index);
 }

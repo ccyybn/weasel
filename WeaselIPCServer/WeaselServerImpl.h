@@ -70,6 +70,15 @@ class ServerImpl : public CWindowImpl<ServerImpl, CWindow, ServerWinTraits>
                                           DWORD wParam,
                                           DWORD lParam);
   DWORD OnChangePage(WEASEL_IPC_COMMAND uMsg, DWORD wParam, DWORD lParam);
+  DWORD OnSetOptions(WEASEL_IPC_COMMAND uMsg,
+                     DWORD wParam,
+                     DWORD lParam,
+                     DWORD vParam);
+  DWORD OnSaveOptions(WEASEL_IPC_COMMAND uMsg,
+                      DWORD wParam,
+                      DWORD lParam,
+                      DWORD vParam);
+  DWORD OnSelectSchema(WEASEL_IPC_COMMAND uMsg, DWORD wParam, DWORD lParam);
 
  public:
   ServerImpl();
