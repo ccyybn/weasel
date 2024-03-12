@@ -102,6 +102,26 @@ void StatusUpdater::Store(Deserializer::KeyType const& k,
     return;
   }
 
+  if (k[1] == L"schema_list") {
+    m_pTarget->p_status->schema_list = value;
+    return;
+  }
+
+  if (k[1] == L"schema_list_size") {
+    m_pTarget->p_status->schema_list_size = value;
+    return;
+  }
+
+  if (k[1] == L"option_list") {
+    m_pTarget->p_status->option_list = value;
+    return;
+  }
+
+  if (k[1] == L"option_list_size") {
+    m_pTarget->p_status->option_list_size = value;
+    return;
+  }
+
   if (k[1] == L"ascii_mode") {
     m_pTarget->p_status->ascii_mode = bool_value;
     return;
@@ -119,6 +139,11 @@ void StatusUpdater::Store(Deserializer::KeyType const& k,
 
   if (k[1] == L"full_shape") {
     m_pTarget->p_status->full_shape = bool_value;
+    return;
+  }
+
+  if (k[1] == L"options") {
+    m_pTarget->p_status->options = value;
     return;
   }
 }

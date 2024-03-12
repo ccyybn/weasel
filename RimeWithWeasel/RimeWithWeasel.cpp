@@ -104,6 +104,198 @@ void RimeWithWeaselHandler::_Setup() {
   RimeSetNotificationHandler(&RimeWithWeaselHandler::OnNotify, this);
 }
 
+void RimeWithWeaselHandler::_InitializeSchemaList() {
+  m_sessions_schema_ids.clear();
+  m_schema_list.clear();
+  RimeSchemaList _schema_list;
+  RimeGetSchemaList(&_schema_list);
+  for (size_t i = 0; i < _schema_list.size; ++i) {
+    m_schema_list.push_back(_schema_list.list[i].schema_id);
+  }
+  deleteRimeSchemaList(_schema_list);
+  m_schema_list_str = join(m_schema_list);
+  logger("[InitializeSchemaList]",
+         "RimeGetSchemaList[" + m_schema_list_str + "]");
+}
+
+void RimeWithWeaselHandler::_InitializeOptionList() {
+  m_sessions_options.clear();
+  delete_char_ptr(all_options_ptr, m_all_options.size());
+  m_all_options.clear();
+  m_all_options_indexes.clear();
+  m_concrete_options.clear();
+  m_discrete_mask = 0;
+  m_concrete_mask = 0;
+  m_all_options.insert(m_default_options.begin(), m_default_options.end());
+
+  RimeOptionList _option_list;
+  RimeGetOptionList(&_option_list);
+  for (size_t i = 0; i < _option_list.size; ++i) {
+    m_all_options.insert(_option_list.list[i]);
+  }
+  delete_char_ptr(_option_list.list, _option_list.size);
+
+  int index = 0;
+  for (const std::string& option_name : m_all_options) {
+    m_all_options_indexes[option_name] = index;
+    if (m_discrete_options.find(option_name) == m_discrete_options.end()) {
+      m_concrete_options.insert(option_name);
+    }
+    index++;
+  }
+  for (const std::string& option_name : m_discrete_options) {
+    m_discrete_mask =
+        bit_set(m_discrete_mask, m_all_options_indexes[option_name]);
+  }
+  m_concrete_mask = ~m_discrete_mask;
+  m_option_list_str = join(m_all_options);
+  all_options_ptr = to_char_ptr(m_all_options);
+  logger("[InitializeOptionList]",
+         "RimeGetOptionList[" + m_option_list_str + "] Discrete Mask[" +
+             tobitstrA(m_discrete_mask) + "] Concrete Mask[" +
+             tobitstrA(m_concrete_mask) + "]");
+}
+
+void RimeWithWeaselHandler::_ResetSavedSchemaId() {
+  std::string schemaId;
+  LONG lRes = RegGetStringValueA(HKEY_CURRENT_USER,
+                                 getWeaselRegNameA(HKEY_CURRENT_USER),
+                                 "RimeSchemaId", schemaId);
+  if (lRes == ERROR_SUCCESS && !schemaId.empty()) {
+    if (std::find(m_schema_list.begin(), m_schema_list.end(), schemaId) !=
+        m_schema_list.end()) {
+      logger("[ResetSavedSchemaId]", "To Rime [" + schemaId + "]");
+      RimeSaveSchema(schemaId.c_str());
+    } else {
+      logger("[ResetSavedSchemaId]", "Schema Id [" + schemaId +
+                                         "] not exits in [" +
+                                         m_schema_list_str + "]");
+      RegDeleteValueA(HKEY_CURRENT_USER, getWeaselRegNameA(HKEY_CURRENT_USER),
+                      "RimeSchemaId");
+    }
+  }
+}
+
+void RimeWithWeaselHandler::_ResetSavedOptions() {
+  m_saved_options.clear();
+  m_saved_options_values.clear();
+  std::string option_names;
+  DWORD option_values;
+  LONG rn = RegGetStringValueA(HKEY_CURRENT_USER,
+                               getWeaselRegNameA(HKEY_CURRENT_USER),
+                               "RimeOptions", option_names);
+  LONG rv =
+      RegGetDWORDValue(HKEY_CURRENT_USER, getWeaselRegName(HKEY_CURRENT_USER),
+                       L"RimeOptionsValue", 0, option_values);
+  if (rn == ERROR_SUCCESS && rv == ERROR_SUCCESS) {
+    std::set<std::string> options = split2set(option_names, ",");
+    int i = 0;
+
+    for (const std::string& option_name : options) {
+      if (m_all_options.find(option_name) != m_all_options.end()) {
+        Bool value = bit_check(option_values, i);
+        m_saved_options.insert(option_name);
+        m_saved_options_values[option_name] = value;
+      } else {
+        logger("[ResetSavedOptions]", "[" + option_name + "] not exists in [" +
+                                          m_option_list_str + "]");
+      }
+      i++;
+    }
+    std::string saved_options_str = join(m_saved_options);
+    DWORD saved_options_bit =
+        bit_set_options(m_saved_options, m_saved_options_values);
+
+    if (saved_options_str.compare(option_names)) {
+      logger("[ResetSavedOptions]", "To Reg [" + saved_options_str + "] -> [" +
+                                        tobitstrA(saved_options_bit) + "]");
+      RegSetStringValueA(HKEY_CURRENT_USER,
+                         getWeaselRegNameA(HKEY_CURRENT_USER), "RimeOptions",
+                         saved_options_str);
+      RegSetDWORDValue(HKEY_CURRENT_USER, getWeaselRegName(HKEY_CURRENT_USER),
+                       L"RimeOptionsValue", saved_options_bit);
+    }
+    char** req_options = to_char_ptr(m_saved_options);
+    Bool* req_values = to_bool_ptr(m_saved_options, m_saved_options_values);
+    logger("[ResetSavedOptions]", "To Rime [" + saved_options_str + "] -> [" +
+                                      tobitstrA(saved_options_bit) + "]");
+    RimeSaveOptions(req_options, req_values, m_saved_options.size());
+    delete[] req_options;
+    delete[] req_values;
+  }
+}
+
+inline void RimeWithWeaselHandler::_SaveChangedDiscreteOptions(
+    WeaselSessionId ipc_id,
+    DWORD last_options,
+    DWORD options) {
+  m_saved_options_mutex.lock();
+  bool any_changed = false;
+  for (const std::string& option_name : m_discrete_options) {
+    int index = m_all_options_indexes[option_name];
+    bool last_value = bit_check(last_options, index);
+    bool value = bit_check(options, index);
+
+    bool is_diff_last = value != last_value;
+    bool is_diff_saved =
+        m_saved_options.find(option_name) == m_saved_options.end() ||
+        m_saved_options_values[option_name] != value;
+
+    if (is_diff_last && is_diff_saved) {
+      bool saved_value = RimeGetSavedOption(_s(ipc_id), option_name.c_str());
+      if (last_value != saved_value) {
+        logger("", "[Session: " + std::to_string(ipc_id) +
+                       "] Discreate option changed[" + option_name + "] -> [" +
+                       std::to_string(value) + "]");
+        m_saved_options.insert(option_name);
+        m_saved_options_values[option_name] = value;
+        any_changed = true;
+      } else {
+        logger("", "[Session: " + std::to_string(ipc_id) +
+                       "] Discreate option changed[" + option_name + "] -> [" +
+                       std::to_string(value) +
+                       "], but rime saved option do not change[" +
+                       std::to_string(saved_value) + "]");
+      }
+    } else {
+      logger("", "[Session: " + std::to_string(ipc_id) +
+                     "] Discreate option not changed[" + option_name +
+                     "] -> [is_diff_last:" + std::to_string(is_diff_last) +
+                     "][is_diff_saved:" + std::to_string(is_diff_saved) + "]");
+    }
+  }
+  if (any_changed) {
+    std::string saved_options_str = join(m_saved_options);
+    DWORD saved_options_bit =
+        bit_set_options(m_saved_options, m_saved_options_values);
+    RegSetStringValueA(HKEY_CURRENT_USER, getWeaselRegNameA(HKEY_CURRENT_USER),
+                       "RimeOptions", saved_options_str);
+    RegSetDWORDValue(HKEY_CURRENT_USER, getWeaselRegName(HKEY_CURRENT_USER),
+                     L"RimeOptionsValue", saved_options_bit);
+  }
+  m_saved_options_mutex.unlock();
+}
+
+inline void RimeWithWeaselHandler::_SaveChangedConcreteOptions(
+    WeaselSessionId ipc_id,
+    DWORD options) {
+  m_saved_options_mutex.lock();
+  for (const std::string& option_name : m_concrete_options) {
+    int index = m_all_options_indexes[option_name];
+    bool value = bit_check(options, index);
+    m_saved_options.insert(option_name);
+    m_saved_options_values[option_name] = value;
+  }
+  std::string saved_options_str = join(m_saved_options);
+  DWORD saved_options_bit =
+      bit_set_options(m_saved_options, m_saved_options_values);
+  RegSetStringValueA(HKEY_CURRENT_USER, getWeaselRegNameA(HKEY_CURRENT_USER),
+                     "RimeOptions", saved_options_str);
+  RegSetDWORDValue(HKEY_CURRENT_USER, getWeaselRegName(HKEY_CURRENT_USER),
+                   L"RimeOptionsValue", saved_options_bit);
+  m_saved_options_mutex.unlock();
+}
+
 void RimeWithWeaselHandler::Initialize() {
   m_disabled = _IsDeployerRunning();
   if (m_disabled) {
@@ -143,6 +335,13 @@ void RimeWithWeaselHandler::Initialize() {
     RimeConfigClose(&config);
   }
   m_last_schema_id.clear();
+
+  m_saved_options_mutex.lock();
+  _InitializeSchemaList();
+  _InitializeOptionList();
+  _ResetSavedSchemaId();
+  _ResetSavedOptions();
+  m_saved_options_mutex.unlock();
 }
 
 void RimeWithWeaselHandler::Finalize() {
@@ -500,6 +699,8 @@ void RimeWithWeaselHandler::_GetCandidateInfo(CandidateInfo& cinfo,
 }
 
 void RimeWithWeaselHandler::StartMaintenance() {
+  m_schema_list_str.clear();
+  m_option_list_str.clear();
   m_session_status_map.clear();
   Finalize();
   _UpdateUI(0);
@@ -513,10 +714,54 @@ void RimeWithWeaselHandler::EndMaintenance() {
   m_session_status_map.clear();
 }
 
+inline DWORD RimeWithWeaselHandler::_GetOptions(WeaselSessionId ipc_id) {
+  DWORD options = 0;
+  Bool* values = new Bool[m_all_options.size()];
+  RimeGetOptions(_s(ipc_id), all_options_ptr, values, m_all_options.size());
+  for (int i = 0; i < m_all_options.size(); i++) {
+    if (values[i])
+      options = bit_set(options, i);
+  }
+  delete[] values;
+  return options;
+}
+
+inline void RimeWithWeaselHandler::_SaveOption(WeaselSessionId ipc_id,
+                                               const std::string& opt,
+                                               bool val) {
+  if (!ipc_id)
+    return;
+  if (m_discrete_options.find(opt) == m_discrete_options.end()) {
+    DWORD options = _GetOptions(ipc_id);
+    logger(L"", L"[Session: " + std::to_wstring(ipc_id) +
+                    L"] Concrete options changed by impl [" +
+                    tobitstr(options) + L"]");
+    _SaveChangedConcreteOptions(ipc_id, options);
+  } else {
+    m_saved_options_mutex.lock();
+    logger("", "[Session: " + std::to_string(ipc_id) +
+                   "] Discrete options changed by impl [" + opt + "] -> [" +
+                   std::to_string(val) + "]");
+    m_saved_options.insert(opt);
+    m_saved_options_values[opt] = val;
+    std::string saved_options_str = join(m_saved_options);
+    DWORD saved_options_bit =
+        bit_set_options(m_saved_options, m_saved_options_values);
+    RegSetStringValueA(HKEY_CURRENT_USER, getWeaselRegNameA(HKEY_CURRENT_USER),
+                       "RimeOptions", saved_options_str);
+    RegSetDWORDValue(HKEY_CURRENT_USER, getWeaselRegName(HKEY_CURRENT_USER),
+                     L"RimeOptionsValue", saved_options_bit);
+    m_saved_options_mutex.unlock();
+  }
+}
+
 void RimeWithWeaselHandler::SetOption(WeaselSessionId ipc_id,
                                       const std::string& opt,
                                       bool val) {
   // from no-session client, not actual typing session
+  logger("[RimeWithWeasel][SET]",
+         "Set option [Session Id: " + std::to_string(ipc_id) + "][" + opt +
+             "]" + " -> [" + std::to_string(val) + "]");
   if (!ipc_id) {
     if (m_global_ascii_mode && opt == "ascii_mode") {
       for (auto& pair : m_session_status_map)
@@ -525,6 +770,92 @@ void RimeWithWeaselHandler::SetOption(WeaselSessionId ipc_id,
       RimeSetOption(_s(m_active_session), opt.c_str(), val);
   } else
     RimeSetOption(_s(ipc_id), opt.c_str(), val);
+}
+
+void RimeWithWeaselHandler::SetOptions(WeaselSessionId ipc_id,
+                                       DWORD options,
+                                       DWORD values) {
+  logger("[RimeWithWeasel][SET]",
+         "Set Options [Session Id: " + std::to_string(ipc_id) + "][" +
+             std::to_string(m_all_options.size()) + "][" + tobitstrA(options) +
+             "]" + " -> [" + tobitstrA(values) + "]");
+
+  int i = 0;
+  std::set<std::string>::iterator it;
+
+  m_sessions_options.erase(ipc_id);
+  for (it = m_all_options.begin(); it != m_all_options.end(); ++it) {
+    std::string option_name = *it;
+    bool is_set = bit_check(options, i);
+    bool value = bit_check(values, i);
+    if (is_set) {
+      logger("[RimeWithWeasel][SET]",
+             "Set Option [Session Id: " + std::to_string(ipc_id) + "][" +
+                 option_name + "] -> [" + std::to_string(value) + "]");
+      RimeSetOptionSilent(_s(ipc_id), option_name.c_str(), value);
+    }
+    i++;
+  }
+  m_sessions_options[ipc_id] = _GetOptions(ipc_id);
+}
+
+void RimeWithWeaselHandler::SaveOption(WeaselSessionId ipc_id,
+                                       const std::string& opt,
+                                       bool val) {
+  // from no-session client, not actual typing session
+  logger("[RimeWithWeasel][SAVE]",
+         "Save Option [Session Id: " + std::to_string(ipc_id) + "][" + opt +
+             "]" + " -> [" + std::to_string(val) + "]");
+  if (!ipc_id) {
+    RimeSaveOption(_s(m_active_session), opt.c_str(), val);
+  } else
+    RimeSaveOption(_s(ipc_id), opt.c_str(), val);
+
+  _SaveOption(ipc_id, opt, val);
+}
+
+void RimeWithWeaselHandler::SaveOptions(WeaselSessionId ipc_id,
+                                        DWORD options,
+                                        DWORD values) {
+  logger("[RimeWithWeasel][SAVE]",
+         "Save options [Session Id: " + std::to_string(ipc_id) + "][" +
+             std::to_string(m_all_options.size()) + "][" + tobitstrA(options) +
+             "]" + " -> [" + tobitstrA(values) + "]");
+
+  int i = 0;
+  std::set<std::string>::iterator it;
+
+  for (it = m_all_options.begin(); it != m_all_options.end(); ++it) {
+    std::string option_name = *it;
+    bool is_set = bit_check(options, i);
+    bool value = bit_check(values, i);
+    if (is_set) {
+      logger("[RimeWithWeasel][SAVE]",
+             "Save options [Session Id: " + std::to_string(ipc_id) + "][" +
+                 option_name + "]" + " -> [" + std::to_string(value) + "]");
+      RimeSaveOption(_s(ipc_id), option_name.c_str(), value);
+    }
+    i++;
+  }
+}
+
+void RimeWithWeaselHandler::SelectSchema(WeaselSessionId ipc_id,
+                                         DWORD schema_index) {
+  // from no-session client, not actual typing session
+
+  m_sessions_schema_ids.erase(ipc_id);
+  if (schema_index < m_schema_list.size()) {
+    std::string schema_id = m_schema_list[schema_index];
+    logger("[RimeWithWeasel]",
+           "Select schema [Session Id: " + std::to_string(ipc_id) + "][" +
+               std::to_string(schema_index) + "][" + schema_id + "]");
+    RimeSelectSchemaSilent(_s(ipc_id), schema_id.c_str());
+  } else {
+    logger("[RimeWithWeasel]", "Select schema [Out Of Range][Session Id: " +
+                                   std::to_string(ipc_id) + "][" +
+                                   std::to_string(schema_index) + "][" +
+                                   m_schema_list_str + "]");
+  }
 }
 
 void RimeWithWeaselHandler::OnUpdateUI(std::function<void()> const& cb) {
@@ -791,6 +1122,8 @@ bool RimeWithWeaselHandler::_Respond(WeaselSessionId ipc_id, EatLine eat) {
   if (RimeGetStatus(_s(ipc_id), &status)) {
     is_composing = !!status.is_composing;
     actions.insert("status");
+    std::string schema_id = std::string(status.schema_id);
+
     messages.push_back(std::string("status.ascii_mode=") +
                        std::to_string(status.is_ascii_mode) + '\n');
     messages.push_back(std::string("status.composing=") +
@@ -799,8 +1132,21 @@ bool RimeWithWeaselHandler::_Respond(WeaselSessionId ipc_id, EatLine eat) {
                        std::to_string(status.is_disabled) + '\n');
     messages.push_back(std::string("status.full_shape=") +
                        std::to_string(status.is_full_shape) + '\n');
-    messages.push_back(std::string("status.schema_id=") +
-                       std::string(status.schema_id) + '\n');
+    messages.push_back(std::string("status.schema_id=") + schema_id + '\n');
+
+    if (!is_composing) {
+      if (m_sessions_schema_ids.find(ipc_id) != m_sessions_schema_ids.end() &&
+          schema_id.compare(m_sessions_schema_ids[ipc_id])) {
+        logger("", "[Session: " + std::to_string(ipc_id) +
+                       "] Schema Id changed [" + m_sessions_schema_ids[ipc_id] +
+                       "] -> [" + schema_id + "]");
+        RegSetStringValueA(HKEY_CURRENT_USER,
+                           getWeaselRegNameA(HKEY_CURRENT_USER), "RimeSchemaId",
+                           schema_id);
+      }
+      m_sessions_schema_ids[ipc_id] = schema_id;
+    }
+
     if (m_global_ascii_mode &&
         (session_status.status.is_ascii_mode != status.is_ascii_mode)) {
       for (auto& pair : m_session_status_map) {
@@ -810,6 +1156,48 @@ bool RimeWithWeaselHandler::_Respond(WeaselSessionId ipc_id, EatLine eat) {
     }
     session_status.status = status;
     RimeFreeStatus(&status);
+  }
+
+  messages.push_back(std::string("status.schema_list=") + m_schema_list_str +
+                     '\n');
+  messages.push_back(std::string("status.schema_list_size=") +
+                     std::to_string(m_schema_list.size()) + '\n');
+
+  messages.push_back(std::string("status.option_list=") + m_option_list_str +
+                     '\n');
+  messages.push_back(std::string("status.option_list_size=") +
+                     std::to_string(m_all_options.size()) + '\n');
+
+  if (!is_composing) {
+    DWORD options = _GetOptions(ipc_id);
+
+    if (m_sessions_options.find(ipc_id) != m_sessions_options.end()) {
+      DWORD last_options = m_sessions_options[ipc_id];
+      DWORD c_last_options = last_options & m_concrete_mask;
+      DWORD c_options = options & m_concrete_mask;
+      DWORD d_last_options = last_options & m_discrete_mask;
+      DWORD d_options = options & m_discrete_mask;
+
+      if (c_last_options != c_options) {
+        logger(L"", L"[Session: " + std::to_wstring(ipc_id) +
+                        L"] Concrete options changed [" +
+                        tobitstr(last_options) + L"] -> [" + tobitstr(options) +
+                        L"]");
+        _SaveChangedConcreteOptions(ipc_id, options);
+        SaveOptions(ipc_id, m_concrete_mask, options);  // To Rime
+      }
+      if (d_last_options != d_options) {
+        logger(L"", L"[Session: " + std::to_wstring(ipc_id) +
+                        L"] Discrete options changed [" +
+                        tobitstr(d_last_options) + L"] -> [" +
+                        tobitstr(d_options) + L"]");
+        _SaveChangedDiscreteOptions(ipc_id, last_options, options);
+      }
+    }
+    m_sessions_options[ipc_id] = options;
+
+    messages.push_back(std::string("status.options=") +
+                       std::to_string(options) + '\n');
   }
 
   RIME_STRUCT(RimeContext, ctx);

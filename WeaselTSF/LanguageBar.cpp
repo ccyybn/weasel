@@ -128,6 +128,9 @@ STDAPI CLangBarItemButton::OnClick(TfLBIClick click,
     if (hwnd != NULL) {
       HMENU menu = LoadMenuW(g_hInst, MAKEINTRESOURCE(IDR_MENU_POPUP));
       HMENU popupMenu = GetSubMenu(menu, 0);
+      CheckMenuItem(popupMenu, ID_WEASELTRAY_GUARDIAN,
+                    MF_BYCOMMAND | (_pTextService->_IsGuard() ? MF_CHECKED
+                                                              : MF_UNCHECKED));
       UINT wID = TrackPopupMenuEx(
           popupMenu, TPM_NONOTIFY | TPM_RETURNCMD | TPM_HORPOSANIMATION, pt.x,
           pt.y, hwnd, NULL);
@@ -248,21 +251,8 @@ void CLangBarItemButton::SetLangbarStatus(DWORD dwStatus, BOOL fSet) {
   return;
 }
 
-BOOL is_wow64() {
-  DWORD errorCode;
-  if (GetSystemWow64DirectoryW(NULL, 0) == 0)
-    if ((errorCode = GetLastError()) == ERROR_CALL_NOT_IMPLEMENTED)
-      return FALSE;
-    else
-      ExitProcess((UINT)errorCode);
-  else
-    return TRUE;
-}
-
 void WeaselTSF::_HandleLangBarMenuSelect(UINT wID) {
-  if (wID != ID_WEASELTRAY_RERUN_SERVICE)
-    m_client.TrayCommand(wID);
-  else {
+  if (wID == ID_WEASELTRAY_RERUN_SERVICE) {
     std::wstring WEASEL_REG_NAME_;
     if (is_wow64())
       WEASEL_REG_NAME_ = L"Software\\WOW6432Node\\Rime\\Weasel";
@@ -283,6 +273,16 @@ void WeaselTSF::_HandleLangBarMenuSelect(UINT wID) {
       });
       th.detach();
     }
+  } else if (wID == ID_WEASELTRAY_GUARDIAN) {
+    BOOL isGuard = _IsGuard();
+    if (isGuard) {
+      _SwitchGuard(FALSE);
+    } else {
+      _SwitchGuard(TRUE);
+    }
+
+  } else {
+    m_client.TrayCommand(wID);
   }
 }
 
@@ -347,7 +347,28 @@ void WeaselTSF::_UninitLanguageBar() {
   _pLangBarButton = NULL;
 }
 
-void WeaselTSF::_UpdateLanguageBar(weasel::Status stat) {
+void WeaselTSF::_UpdateLanguageBar(const std::wstring& callFrom,
+                                   weasel::Status stat) {
+  if (!stat.composing && !stat.options.empty()) {
+    std::wstring log = L"[WeaselTSF][" + callFrom + L"][BackUpStatus]";
+
+    if (_allOptions.empty() ||
+        _backupStatus.option_list.compare(stat.option_list)) {
+      _allOptions = split2set(ws2s(stat.option_list), ",");
+    }
+    _backupStatus = stat;
+    _isBackupStatusInitialized = true;
+
+    // logger(log, L"schema_list[" + _backupStatus.schema_list + L"][" +
+    // _backupStatus.schema_list_size + L"]"); logger(log, L"option_list[" +
+    // _backupStatus.option_list + L"][" + _backupStatus.option_list_size +
+    // L"][" + std::to_wstring(_allOptions.size()) + L"]"); logger(log,
+    // L"schema_id[" + _backupStatus.schema_id + L"],composing[" +
+    // std::to_wstring(_backupStatus.composing) + L"],ascii_mode[" +
+    // std::to_wstring(_backupStatus.ascii_mode) + L"],full_shape[" +
+    // std::to_wstring(_backupStatus.full_shape) + L"]"); logger(log,
+    // L"options[" + tobitstr(options) + L"]");
+  }
   if (!_pLangBarButton)
     return;
   DWORD flags;
