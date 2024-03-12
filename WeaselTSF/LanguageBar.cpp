@@ -5,6 +5,7 @@
 #include "WeaselTSF.h"
 #include "LanguageBar.h"
 #include "CandidateList.h"
+#include "winreg.h"
 
 static const DWORD LANGBARITEMSINK_COOKIE = 0x42424242;
 
@@ -253,20 +254,11 @@ void CLangBarItemButton::SetLangbarStatus(DWORD dwStatus, BOOL fSet) {
 
 void WeaselTSF::_HandleLangBarMenuSelect(UINT wID) {
   if (wID == ID_WEASELTRAY_RERUN_SERVICE) {
-    std::wstring WEASEL_REG_NAME_;
-    if (is_wow64())
-      WEASEL_REG_NAME_ = L"Software\\WOW6432Node\\Rime\\Weasel";
-    else
-      WEASEL_REG_NAME_ = L"Software\\Rime\\Weasel";
-
-    TCHAR szValue[MAX_PATH];
-    DWORD dwBufLen = MAX_PATH;
-
-    LONG lRes =
-        RegGetValue(HKEY_LOCAL_MACHINE, WEASEL_REG_NAME_.c_str(), L"WeaselRoot",
-                    RRF_RT_REG_SZ, NULL, szValue, &dwBufLen);
+    std::wstring dir;
+    LONG lRes = RegGetStringValueWOW64(HKEY_LOCAL_MACHINE,
+                                       getWeaselRegName(HKEY_LOCAL_MACHINE),
+                                       L"WeaselRoot", dir);
     if (lRes == ERROR_SUCCESS) {
-      std::wstring dir(szValue);
       std::thread th([dir]() {
         ShellExecuteW(NULL, L"open", (dir + L"\\start_service.bat").c_str(),
                       NULL, dir.c_str(), SW_HIDE);

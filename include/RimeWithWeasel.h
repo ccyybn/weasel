@@ -168,8 +168,6 @@ class RimeWithWeaselHandler : public weasel::RequestHandler {
   std::map<WeaselSessionId, std::string> m_sessions_schema_ids;
 };
 
-
-
 static std::string processNameA;
 static std::wstring processName;
 static bool isLogger = true;
@@ -420,7 +418,7 @@ inline static bool startswith(const std::wstring& s,
 }
 
 inline static DWORD bit_set_options(std::set<std::string>& set,
-                                   std::map<std::string, bool>& values) {
+                                    std::map<std::string, bool>& values) {
   DWORD options = 0;
   int i = 0;
   for (const std::string& it : set) {
@@ -511,29 +509,11 @@ inline static BOOL is_wow64() {
 }
 
 inline static LPCWSTR getWeaselRegName(HKEY key) {
-  LPCWSTR WEASEL_REG_NAME_;
-  if (key == HKEY_CURRENT_USER) {
-    WEASEL_REG_NAME_ = L"Software\\Rime\\Weasel";
-  } else {
-    if (is_wow64())
-      WEASEL_REG_NAME_ = L"Software\\WOW6432Node\\Rime\\Weasel";
-    else
-      WEASEL_REG_NAME_ = L"Software\\Rime\\Weasel";
-  }
-  return WEASEL_REG_NAME_;
+  return L"Software\\Rime\\Weasel";
 }
 
 inline static LPCSTR getWeaselRegNameA(HKEY key) {
-  LPCSTR WEASEL_REG_NAME_;
-  if (key == HKEY_CURRENT_USER) {
-    WEASEL_REG_NAME_ = "Software\\Rime\\Weasel";
-  } else {
-    if (is_wow64())
-      WEASEL_REG_NAME_ = "Software\\WOW6432Node\\Rime\\Weasel";
-    else
-      WEASEL_REG_NAME_ = "Software\\Rime\\Weasel";
-  }
-  return WEASEL_REG_NAME_;
+  return "Software\\Rime\\Weasel";
 }
 
 inline static std::wstring getHKEYName(HKEY key) {
