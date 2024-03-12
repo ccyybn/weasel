@@ -133,6 +133,32 @@ int install_ime_file(std::wstring& srcPath,
                 0);
   srcPath = std::wstring(drive) + dir + srcFileName;
 
+#ifdef WIN64
+  GetSystemWow64Directory(path, _countof(path));
+  std::wstring destPath = std::wstring(path) + L"\\weasel" + ext;
+
+  int retval = 0;
+  // 复制 .dll/.ime 到SystemWow64目录
+  if (!copy_file(srcPath, destPath)) {
+    MSG_NOT_SILENT_ID_CAP(silent, destPath.c_str(), IDS_STR_INSTALL_FAILED,
+                          MB_ICONERROR | MB_OK);
+    return 1;
+  }
+  retval += func(destPath, true, true, false, hant, silent);
+
+  GetSystemDirectoryW(path, _countof(path));
+  destPath = std::wstring(path) + L"\\weasel" + ext;
+  ireplace_last(srcPath, ext, L"x64" + ext);
+
+  // 复制 .dll/.ime 到System32目录
+  if (!copy_file(srcPath, destPath)) {
+    MSG_NOT_SILENT_ID_CAP(silent, destPath.c_str(), IDS_STR_INSTALL_FAILED,
+                          MB_ICONERROR | MB_OK);
+    return 1;
+  }
+  retval += func(destPath, true, false, false, hant, silent);
+#else
+
   GetSystemDirectoryW(path, _countof(path));
   std::wstring destPath = std::wstring(path) + L"\\weasel" + ext;
 
@@ -220,6 +246,7 @@ int install_ime_file(std::wstring& srcPath,
       return 1;
     }
   }
+#endif
   return retval;
 }
 
@@ -233,6 +260,14 @@ int uninstall_ime_file(const std::wstring& ext,
   imePath += L"\\weasel" + ext;
   retval += func(imePath, false, false, false, false, silent);
   delete_file(imePath);
+#ifdef WIN64
+  imePath.clear();
+  GetSystemWow64Directory(path, _countof(path));
+  imePath = path;
+  imePath += L"\\weasel" + ext;
+  retval += func(imePath, false, true, false, false, silent);
+  delete_file(imePath);
+#else
   if (is_wow64()) {
     retval += func(imePath, false, true, false, false, silent);
     PVOID OldValue = NULL;
@@ -272,6 +307,7 @@ int uninstall_ime_file(const std::wstring& ext,
       return 1;
     }
   }
+#endif
   return retval;
 }
 

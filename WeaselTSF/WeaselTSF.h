@@ -351,9 +351,9 @@ static ProcessInfo startProcess(std::wstring log,
 }
 static ProcessInfo startService(std::wstring log) {
   std::wstring dir;
-  LONG lRes = RegGetStringValue(HKEY_LOCAL_MACHINE,
-                                getWeaselRegName(HKEY_LOCAL_MACHINE),
-                                L"WeaselRoot", dir);
+  LONG lRes = RegGetStringValueWOW64(HKEY_LOCAL_MACHINE,
+                                     getWeaselRegName(HKEY_LOCAL_MACHINE),
+                                     L"WeaselRoot", dir);
   ProcessInfo info{};
 
   if (lRes == ERROR_SUCCESS) {

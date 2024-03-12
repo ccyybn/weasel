@@ -6,6 +6,7 @@
 #include "LanguageBar.h"
 #include "CandidateList.h"
 #include <WeaselUtility.h>
+#include "winreg.h"
 
 static const DWORD LANGBARITEMSINK_COOKIE = 0x42424242;
 
@@ -32,16 +33,6 @@ static void HMENU2ITfMenu(HMENU hMenu, ITfMenu* pTfMenu) {
       }
     }
   }
-}
-
-static LPCWSTR GetWeaselRegName() {
-  LPCWSTR WEASEL_REG_NAME_;
-  if (is_wow64())
-    WEASEL_REG_NAME_ = L"Software\\WOW6432Node\\Rime\\Weasel";
-  else
-    WEASEL_REG_NAME_ = L"Software\\Rime\\Weasel";
-
-  return WEASEL_REG_NAME_;
 }
 
 static bool open(const std::wstring& path) {
@@ -294,8 +285,9 @@ void WeaselTSF::_HandleLangBarMenuSelect(UINT wID) {
   switch (wID) {
     case ID_WEASELTRAY_RERUN_SERVICE:
     case ID_WEASELTRAY_INSTALLDIR:
-      if (RegGetStringValue(HKEY_LOCAL_MACHINE, GetWeaselRegName(),
-                            L"WeaselRoot", dir) == ERROR_SUCCESS) {
+      if (RegGetStringValueWOW64(HKEY_LOCAL_MACHINE,
+                                 getWeaselRegName(HKEY_LOCAL_MACHINE),
+                                 L"WeaselRoot", dir) == ERROR_SUCCESS) {
         if (wID == ID_WEASELTRAY_RERUN_SERVICE) {
           std::thread th([dir]() {
             ShellExecuteW(NULL, L"open", (dir + L"\\start_service.bat").c_str(),

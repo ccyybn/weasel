@@ -456,29 +456,11 @@ inline void logger(const std::string& log, const std::string& content) {
 }
 
 inline LPCWSTR getWeaselRegName(HKEY key) {
-  LPCWSTR WEASEL_REG_NAME_;
-  if (key == HKEY_CURRENT_USER) {
-    WEASEL_REG_NAME_ = L"Software\\Rime\\Weasel";
-  } else {
-    if (is_wow64())
-      WEASEL_REG_NAME_ = L"Software\\WOW6432Node\\Rime\\Weasel";
-    else
-      WEASEL_REG_NAME_ = L"Software\\Rime\\Weasel";
-  }
-  return WEASEL_REG_NAME_;
+  return L"Software\\Rime\\Weasel";
 }
 
 inline LPCSTR getWeaselRegNameA(HKEY key) {
-  LPCSTR WEASEL_REG_NAME_;
-  if (key == HKEY_CURRENT_USER) {
-    WEASEL_REG_NAME_ = "Software\\Rime\\Weasel";
-  } else {
-    if (is_wow64())
-      WEASEL_REG_NAME_ = "Software\\WOW6432Node\\Rime\\Weasel";
-    else
-      WEASEL_REG_NAME_ = "Software\\Rime\\Weasel";
-  }
-  return WEASEL_REG_NAME_;
+  return "Software\\Rime\\Weasel";
 }
 
 inline std::wstring getHKEYName(HKEY key) {
