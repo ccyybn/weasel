@@ -809,13 +809,13 @@ bool WeaselPanel::_DrawCandidates(CDCHandle& dc, bool back) {
         if (m_style.layout_type == UIStyle::LAYOUT_VERTICAL_TEXT) {
           int x = rect.left + (rect.Width() - width) / 2;
           CRect mkrc{x, rect.top, x + width, rect.top + m_layout->mark_height};
-          GraphicsRoundRectPath mk_path(mkrc, mkrc.Height() / 2);
+          GraphicsRoundRectPath mk_path(mkrc, 2);
           g_back.FillPath(&mk_brush, &mk_path);
         } else {
           int y = rect.top + (rect.Height() - height) / 2;
           CRect mkrc{rect.left, y, rect.left + m_layout->mark_width,
                      y + height};
-          GraphicsRoundRectPath mk_path(mkrc, mkrc.Width() / 2);
+          GraphicsRoundRectPath mk_path(mkrc, 2);
           g_back.FillPath(&mk_brush, &mk_path);
         }
       }

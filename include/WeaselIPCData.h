@@ -272,6 +272,7 @@ struct UIStyle {
   int shadow_radius;
   int shadow_offset_x;
   int shadow_offset_y;
+  int mark_bar_weight;
   bool vertical_auto_reverse;
   // color scheme
   int text_color;
@@ -345,6 +346,7 @@ struct UIStyle {
         shadow_radius(0),
         shadow_offset_x(0),
         shadow_offset_y(0),
+        mark_bar_weight(0),
         vertical_auto_reverse(false),
         text_color(0),
         candidate_text_color(0),
@@ -407,6 +409,7 @@ struct UIStyle {
         shadow_radius != st.shadow_radius ||
         shadow_offset_x != st.shadow_offset_x ||
         shadow_offset_y != st.shadow_offset_y ||
+        mark_bar_weight != st.mark_bar_weight ||
         vertical_auto_reverse != st.vertical_auto_reverse ||
         baseline != st.baseline || linespacing != st.linespacing ||
         text_color != st.text_color ||
@@ -481,6 +484,7 @@ void serialize(Archive& ar, weasel::UIStyle& s, const unsigned int version) {
   ar & s.shadow_radius;
   ar & s.shadow_offset_x;
   ar & s.shadow_offset_y;
+  ar & s.mark_bar_weight;
   ar & s.vertical_auto_reverse;
   // color scheme
   ar & s.text_color;
