@@ -65,7 +65,11 @@ RimeWithWeaselHandler::~RimeWithWeaselHandler() {
 }
 
 bool add_session = false;
-void _UpdateUIStyle(RimeConfig* config, UI* ui, bool initialize);
+std::string ui_marker;
+void _UpdateUIStyle(RimeConfig* config,
+                    UI* ui,
+                    bool initialize,
+                    const char* color_scheme = NULL);
 bool _UpdateUIStyleColor(RimeConfig* config,
                          UIStyle& style,
                          std::string color = "");
@@ -1350,16 +1354,31 @@ static inline int ConvertColorToAbgr(int color, ColorFormat fmt = COLOR_ABGR) {
     return RGBA2ABGR(color);
 }
 // parse color value, with fallback value
-static Bool _RimeConfigGetColor32bWithFallback(RimeConfig* config,
-                                               const std::string key,
-                                               int& value,
-                                               const ColorFormat& fmt,
-                                               const int& fallback) {
+static Bool _RimeConfigGetColor32bWithFallback(
+    RimeConfig* config,
+    const std::string key,
+    int& value,
+    const ColorFormat& fmt,
+    const int& fallback,
+    const std::string* fb_key = NULL) {
   char color[256] = {0};
   if (!RimeConfigGetString(config, key.c_str(), color, 256)) {
-    value = fallback;
-    return False;
+    if (fb_key != NULL) {
+      // logger(ui_marker, "_RimeConfigGetColor32bWithFallback[" + key +
+      //                       "] -> fb_key[" + *fb_key + "]");
+      return _RimeConfigGetColor32bWithFallback(config, *fb_key, value, fmt,
+                                                fallback);
+    } else {
+      value = fallback;
+      // logger(ui_marker, "_RimeConfigGetColor32bWithFallback[" + key +
+      //                       "] -> fallback[" + std::to_string(value) + "]");
+      return False;
+    }
   }
+  // logger(ui_marker,
+  //        "_RimeConfigGetColor32bWithFallback[" + key + "] -> [" + color +
+  //        "]");
+
   std::string color_str = std::string(color);
   // color code hex
   if (std::regex_match(color_str, HEX_REGEX)) {
@@ -1435,29 +1454,64 @@ static inline void _RemoveSpaceAroundSep(std::wstring& str) {
 // parset bool type configuration to T type value trueValue / falseValue
 template <class T>
 static void _RimeGetBool(RimeConfig* config,
-                         char* key,
+                         const std::string& key,
                          bool cond,
                          T& value,
                          const T& trueValue,
-                         const T& falseValue) {
+                         const T& falseValue,
+                         const std::string* fb_key = NULL) {
   Bool tempb = False;
-  if (RimeConfigGetBool(config, key, &tempb) || cond)
+  bool rt = false;
+  if (!(rt = RimeConfigGetBool(config, key.c_str(), &tempb))) {
+    if (fb_key != NULL) {
+      // logger(ui_marker, "_RimeGetBool[" + key + "] -> fb_key[" + *fb_key +
+      // "]");
+      rt = RimeConfigGetBool(config, fb_key->c_str(), &tempb);
+      if (rt) {
+        // logger(ui_marker, "_RimeGetBool[" + key + "] -> fb_key[" + *fb_key +
+        //                       "] -> [" + std::to_string(tempb) + "]");
+      }
+    }
+  } else {
+    // logger(ui_marker,
+    //        "_RimeGetBool[" + key + "] -> [" + std::to_string(tempb) + "]");
+  }
+  if (rt || cond) {
     value = (!!tempb) ? trueValue : falseValue;
+    // logger(ui_marker, "_RimeGetBool[rt:" + std::to_string(rt) +
+    //                       "][cond:" + std::to_string(cond) + "][" + key +
+    //                       "] -> [" + std::to_string(tempb) + "] -> [" +
+    //                       std::to_string(value) + "]");
+  }
 }
 //	parse string option to T type value, with fallback
 template <typename T>
 void _RimeParseStringOptWithFallback(RimeConfig* config,
-                                     const std::string key,
+                                     const std::string& key,
                                      T& value,
                                      const std::map<std::string, T> amap,
-                                     const T& fallback) {
+                                     const T& fallback,
+                                     const std::string* fb_key = NULL) {
   char str_buff[256] = {0};
   if (RimeConfigGetString(config, key.c_str(), str_buff,
                           sizeof(str_buff) - 1)) {
     auto it = amap.find(std::string(str_buff));
     value = (it != amap.end()) ? it->second : fallback;
-  } else
-    value = fallback;
+    // logger(ui_marker, "_RimeParseStringOptWithFallback[" + key + "] -> [" +
+    //                       str_buff + "]");
+  } else {
+    if (fb_key != NULL) {
+      // logger(ui_marker, "_RimeParseStringOptWithFallback[" + key +
+      //                       "] -> fb_key[" + *fb_key + "]");
+      _RimeParseStringOptWithFallback(config, *fb_key, value, amap, fallback);
+    } else {
+      value = fallback;
+      std::ostringstream oss;
+      oss << value;
+      // logger(ui_marker, "_RimeParseStringOptWithFallback[" + key +
+      //                       "] -> fallback[" + oss.str() + "]");
+    }
+  }
 }
 static inline void _abs(int* value) {
   *value = abs(*value);
@@ -1465,19 +1519,32 @@ static inline void _abs(int* value) {
 // get int type value with fallback key fb_key, and func to execute after
 // reading
 static void _RimeGetIntWithFallback(RimeConfig* config,
-                                    const char* key,
+                                    const std::string& key,
                                     int* value,
-                                    const char* fb_key = NULL,
+                                    const std::string* fb_key = NULL,
                                     std::function<void(int*)> func = NULL,
                                     std::function<int()> fb_func = NULL) {
-  if (!RimeConfigGetInt(config, key, value)) {
+  if (!RimeConfigGetInt(config, key.c_str(), value)) {
     if (fb_key != NULL) {
-      if (!RimeConfigGetInt(config, fb_key, value)) {
-        if (fb_func)
+      // logger(ui_marker,
+      //        "_RimeGetIntWithFallback[" + key + "] -> fb_key[" + *fb_key +
+      //        "]");
+      if (!RimeConfigGetInt(config, (*fb_key).c_str(), value)) {
+        if (fb_func) {
           *value = fb_func();
+          // logger("", "_RimeGetIntWithFallback[" + key + "] -> fb_key[" +
+          //                *fb_key + "] -> fb_func[" + std::to_string(*value) +
+          //                "]");
+        }
       }
-    } else if (fb_func)
+    } else if (fb_func) {
       *value = fb_func();
+      // logger(ui_marker, "_RimeGetIntWithFallback[" + key + "] -> fb_func[" +
+      //                       std::to_string(*value) + "]");
+    }
+  } else {
+    // logger(ui_marker, "_RimeGetIntWithFallback[" + key + "] -> [" +
+    //                       std::to_string(*value) + "]");
   }
   if (func)
     func(value);
@@ -1487,19 +1554,29 @@ static void _RimeGetIntWithFallback(RimeConfig* config,
 // reading
 static void _RimeGetStringWithFunc(
     RimeConfig* config,
-    const char* key,
+    const std::string& key,
     std::wstring& value,
     const std::wstring* fallback = NULL,
-    const std::function<void(std::wstring&)> func = NULL) {
+    const std::function<void(std::wstring&)> func = NULL,
+    const std::string* fb_key = NULL) {
   const int BUF_SIZE = 2047;
   char buffer[BUF_SIZE + 1] = {0};
-  if (RimeConfigGetString(config, key, buffer, BUF_SIZE)) {
+  if (RimeConfigGetString(config, key.c_str(), buffer, BUF_SIZE)) {
     std::wstring tmp = string_to_wstring(buffer, CP_UTF8);
     if (func)
       func(tmp);
     value = tmp;
-  } else if (fallback)
+    // logger(ui_marker,
+    //        "_RimeGetStringWithFunc[" + key + "] -> [" + ws2s(value) + "]");
+  } else if (fb_key != NULL) {
+    // logger(ui_marker,
+    //        "_RimeGetStringWithFunc[" + key + "] -> fb_key[" + *fb_key + "]");
+    _RimeGetStringWithFunc(config, *fb_key, value, fallback, func);
+  } else if (fallback) {
+    // logger(ui_marker, "_RimeGetStringWithFunc[" + key + "] -> fallback[" +
+    //                       ws2s(*fallback) + "]");
     value = *fallback;
+  }
 }
 
 void RimeWithWeaselHandler::_UpdateShowNotifications(RimeConfig* config,
@@ -1536,15 +1613,28 @@ void RimeWithWeaselHandler::_UpdateShowNotifications(RimeConfig* config,
 }
 
 // update ui's style parameters, ui has been check before referenced
-static void _UpdateUIStyle(RimeConfig* config, UI* ui, bool initialize) {
+static void _UpdateUIStyle(RimeConfig* config,
+                           UI* ui,
+                           bool initialize,
+                           const char* color_scheme) {
+  ui_marker = color_scheme
+                  ? "[Color Scheme][" + std::string(color_scheme) +
+                        "][initialize:" + std::to_string(initialize) + "]"
+                  : "[Global][initialize:" + std::to_string(initialize) + "]";
   UIStyle& style(ui->style());
+
+  std::string prefix = color_scheme
+                           ? std::string("preset_color_schemes/") + color_scheme
+                           : "style";
+  std::string layout = color_scheme ? "" : "/layout";
   // get font faces
-  _RimeGetStringWithFunc(config, "style/font_face", style.font_face, NULL,
+  _RimeGetStringWithFunc(config, prefix + "/font_face", style.font_face, NULL,
                          _RemoveSpaceAroundSep);
   std::wstring* const pFallbackFontFace = initialize ? &style.font_face : NULL;
-  _RimeGetStringWithFunc(config, "style/label_font_face", style.label_font_face,
-                         pFallbackFontFace, _RemoveSpaceAroundSep);
-  _RimeGetStringWithFunc(config, "style/comment_font_face",
+  _RimeGetStringWithFunc(config, prefix + "/label_font_face",
+                         style.label_font_face, pFallbackFontFace,
+                         _RemoveSpaceAroundSep);
+  _RimeGetStringWithFunc(config, prefix + "/comment_font_face",
                          style.comment_font_face, pFallbackFontFace,
                          _RemoveSpaceAroundSep);
   // able to set label font/comment font empty, force fallback to font face.
@@ -1553,24 +1643,26 @@ static void _UpdateUIStyle(RimeConfig* config, UI* ui, bool initialize) {
   if (style.comment_font_face.empty())
     style.comment_font_face = style.font_face;
   // get font points
-  _RimeGetIntWithFallback(config, "style/font_point", &style.font_point);
+  _RimeGetIntWithFallback(config, prefix + "/font_point", &style.font_point);
   if (style.font_point <= 0)
     style.font_point = 12;
-  _RimeGetIntWithFallback(config, "style/label_font_point",
-                          &style.label_font_point, "style/font_point", _abs);
-  _RimeGetIntWithFallback(config, "style/comment_font_point",
-                          &style.comment_font_point, "style/font_point", _abs);
-  _RimeGetIntWithFallback(config, "style/candidate_abbreviate_length",
+  _RimeGetIntWithFallback(config, prefix + "/label_font_point",
+                          &style.label_font_point, &(prefix + "/font_point"),
+                          _abs);
+  _RimeGetIntWithFallback(config, prefix + "/comment_font_point",
+                          &style.comment_font_point, &(prefix + "/font_point"),
+                          _abs);
+  _RimeGetIntWithFallback(config, prefix + "/candidate_abbreviate_length",
                           &style.candidate_abbreviate_length, NULL, _abs);
-  _RimeGetBool(config, "style/inline_preedit", initialize, style.inline_preedit,
-               true, false);
-  _RimeGetBool(config, "style/vertical_auto_reverse", initialize,
+  _RimeGetBool(config, prefix + "/inline_preedit", initialize,
+               style.inline_preedit, true, false);
+  _RimeGetBool(config, prefix + "/vertical_auto_reverse", initialize,
                style.vertical_auto_reverse, true, false);
   const std::map<std::string, UIStyle::PreeditType> _preeditMap = {
       {std::string("composition"), UIStyle::COMPOSITION},
       {std::string("preview"), UIStyle::PREVIEW},
       {std::string("preview_all"), UIStyle::PREVIEW_ALL}};
-  _RimeParseStringOptWithFallback(config, "style/preedit_type",
+  _RimeParseStringOptWithFallback(config, prefix + "/preedit_type",
                                   style.preedit_type, _preeditMap,
                                   style.preedit_type);
   const std::map<std::string, UIStyle::AntiAliasMode> _aliasModeMap = {
@@ -1579,65 +1671,67 @@ static void _UpdateUIStyle(RimeConfig* config, UI* ui, bool initialize) {
       {std::string("grayscale"), UIStyle::GRAYSCALE},
       {std::string("aliased"), UIStyle::ALIASED},
       {std::string("default"), UIStyle::DEFAULT}};
-  _RimeParseStringOptWithFallback(config, "style/antialias_mode",
+  _RimeParseStringOptWithFallback(config, prefix + "/antialias_mode",
                                   style.antialias_mode, _aliasModeMap,
                                   style.antialias_mode);
   const std::map<std::string, UIStyle::HoverType> _hoverTypeMap = {
       {std::string("none"), UIStyle::HoverType::NONE},
       {std::string("semi_hilite"), UIStyle::HoverType::SEMI_HILITE},
       {std::string("hilite"), UIStyle::HoverType::HILITE}};
-  _RimeParseStringOptWithFallback(config, "style/hover_type", style.hover_type,
-                                  _hoverTypeMap, style.hover_type);
+  _RimeParseStringOptWithFallback(config, prefix + "/hover_type",
+                                  style.hover_type, _hoverTypeMap,
+                                  style.hover_type);
   const std::map<std::string, UIStyle::LayoutAlignType> _alignType = {
       {std::string("top"), UIStyle::ALIGN_TOP},
       {std::string("center"), UIStyle::ALIGN_CENTER},
       {std::string("bottom"), UIStyle::ALIGN_BOTTOM}};
-  _RimeParseStringOptWithFallback(config, "style/layout/align_type",
+  _RimeParseStringOptWithFallback(config, prefix + layout + "/align_type",
                                   style.align_type, _alignType,
                                   style.align_type);
-  _RimeGetBool(config, "style/display_tray_icon", initialize,
+  _RimeGetBool(config, prefix + "/display_tray_icon", initialize,
                style.display_tray_icon, true, false);
-  _RimeGetBool(config, "style/ascii_tip_follow_cursor", initialize,
+  _RimeGetBool(config, prefix + "/ascii_tip_follow_cursor", initialize,
                style.ascii_tip_follow_cursor, true, false);
-  _RimeGetBool(config, "style/horizontal", initialize, style.layout_type,
+  _RimeGetBool(config, prefix + "/horizontal", initialize, style.layout_type,
                UIStyle::LAYOUT_HORIZONTAL, UIStyle::LAYOUT_VERTICAL);
-  _RimeGetBool(config, "style/paging_on_scroll", initialize,
+  _RimeGetBool(config, prefix + "/paging_on_scroll", initialize,
                style.paging_on_scroll, true, false);
-  _RimeGetBool(config, "style/click_to_capture", initialize,
+  _RimeGetBool(config, prefix + "/click_to_capture", initialize,
                style.click_to_capture, true, false);
-  _RimeGetBool(config, "style/fullscreen", false, style.layout_type,
+  _RimeGetBool(config, prefix + "/fullscreen", false, style.layout_type,
                ((style.layout_type == UIStyle::LAYOUT_HORIZONTAL)
                     ? UIStyle::LAYOUT_HORIZONTAL_FULLSCREEN
                     : UIStyle::LAYOUT_VERTICAL_FULLSCREEN),
                style.layout_type);
-  _RimeGetBool(config, "style/vertical_text", false, style.layout_type,
+  _RimeGetBool(config, prefix + "/vertical_text", false, style.layout_type,
                UIStyle::LAYOUT_VERTICAL_TEXT, style.layout_type);
-  _RimeGetBool(config, "style/vertical_text_left_to_right", false,
+  _RimeGetBool(config, prefix + "/vertical_text_left_to_right", false,
                style.vertical_text_left_to_right, true, false);
-  _RimeGetBool(config, "style/vertical_text_with_wrap", false,
+  _RimeGetBool(config, prefix + "/vertical_text_with_wrap", false,
                style.vertical_text_with_wrap, true, false);
   const std::map<std::string, bool> _text_orientation = {
       {std::string("horizontal"), false}, {std::string("vertical"), true}};
   bool _text_orientation_bool = false;
-  _RimeParseStringOptWithFallback(config, "style/text_orientation",
+  _RimeParseStringOptWithFallback(config, prefix + "/text_orientation",
                                   _text_orientation_bool, _text_orientation,
                                   _text_orientation_bool);
   if (_text_orientation_bool)
     style.layout_type = UIStyle::LAYOUT_VERTICAL_TEXT;
-  _RimeGetStringWithFunc(config, "style/label_format", style.label_text_format);
-  _RimeGetStringWithFunc(config, "style/mark_text", style.mark_text);
-  _RimeGetIntWithFallback(config, "style/layout/baseline", &style.baseline,
-                          NULL, _abs);
-  _RimeGetIntWithFallback(config, "style/layout/linespacing",
+  _RimeGetStringWithFunc(config, prefix + "/label_format",
+                         style.label_text_format);
+  _RimeGetStringWithFunc(config, prefix + "/mark_text", style.mark_text);
+  _RimeGetIntWithFallback(config, prefix + layout + "/min_width",
+                          &style.min_width, NULL, _abs);
+  _RimeGetIntWithFallback(config, prefix + layout + "/baseline",
+                          &style.baseline, NULL, _abs);
+  _RimeGetIntWithFallback(config, prefix + layout + "/linespacing",
                           &style.linespacing, NULL, _abs);
-  _RimeGetIntWithFallback(config, "style/layout/min_width", &style.min_width,
-                          NULL, _abs);
-  _RimeGetIntWithFallback(config, "style/layout/max_width", &style.max_width,
-                          NULL, _abs);
-  _RimeGetIntWithFallback(config, "style/layout/min_height", &style.min_height,
-                          NULL, _abs);
-  _RimeGetIntWithFallback(config, "style/layout/max_height", &style.max_height,
-                          NULL, _abs);
+  _RimeGetIntWithFallback(config, prefix + layout + "/max_width",
+                          &style.max_width, NULL, _abs);
+  _RimeGetIntWithFallback(config, prefix + layout + "/min_height",
+                          &style.min_height, NULL, _abs);
+  _RimeGetIntWithFallback(config, prefix + layout + "/max_height",
+                          &style.max_height, NULL, _abs);
   // layout (alternative to style/horizontal)
   const std::map<std::string, UIStyle::LayoutType> _layoutMap = {
       {std::string("vertical"), UIStyle::LAYOUT_VERTICAL},
@@ -1646,7 +1740,7 @@ static void _UpdateUIStyle(RimeConfig* config, UI* ui, bool initialize) {
       {std::string("vertical+fullscreen"), UIStyle::LAYOUT_VERTICAL_FULLSCREEN},
       {std::string("horizontal+fullscreen"),
        UIStyle::LAYOUT_HORIZONTAL_FULLSCREEN}};
-  _RimeParseStringOptWithFallback(config, "style/layout/type",
+  _RimeParseStringOptWithFallback(config, prefix + layout + "/type",
                                   style.layout_type, _layoutMap,
                                   style.layout_type);
   // disable max_width when full screen
@@ -1655,46 +1749,48 @@ static void _UpdateUIStyle(RimeConfig* config, UI* ui, bool initialize) {
     style.max_width = 0;
     style.inline_preedit = false;
   }
-  _RimeGetIntWithFallback(config, "style/layout/border", &style.border,
-                          "style/layout/border_width", _abs);
-  _RimeGetIntWithFallback(config, "style/layout/margin_x", &style.margin_x);
-  _RimeGetIntWithFallback(config, "style/layout/margin_y", &style.margin_y);
-  _RimeGetIntWithFallback(config, "style/layout/spacing", &style.spacing, NULL,
-                          _abs);
-  _RimeGetIntWithFallback(config, "style/layout/candidate_spacing",
+  _RimeGetIntWithFallback(config, prefix + layout + "/border", &style.border,
+                          &(prefix + layout + "/border_width"), _abs);
+  _RimeGetIntWithFallback(config, prefix + layout + "/margin_x",
+                          &style.margin_x);
+  _RimeGetIntWithFallback(config, prefix + layout + "/margin_y",
+                          &style.margin_y);
+  _RimeGetIntWithFallback(config, prefix + layout + "/spacing", &style.spacing,
+                          NULL, _abs);
+  _RimeGetIntWithFallback(config, prefix + layout + "/candidate_spacing",
                           &style.candidate_spacing, NULL, _abs);
-  _RimeGetIntWithFallback(config, "style/layout/hilite_spacing",
+  _RimeGetIntWithFallback(config, prefix + layout + "/hilite_spacing",
                           &style.hilite_spacing, NULL, _abs);
-  _RimeGetIntWithFallback(config, "style/layout/hilite_padding_x",
+  _RimeGetIntWithFallback(config, prefix + layout + "/hilite_padding_x",
                           &style.hilite_padding_x,
-                          "style/layout/hilite_padding", _abs);
-  _RimeGetIntWithFallback(config, "style/layout/hilite_padding_y",
+                          &(prefix + layout + "/hilite_padding"), _abs);
+  _RimeGetIntWithFallback(config, prefix + layout + "/hilite_padding_y",
                           &style.hilite_padding_y,
-                          "style/layout/hilite_padding", _abs);
-  _RimeGetIntWithFallback(config, "style/layout/shadow_radius",
+                          &(prefix + layout + "/hilite_padding"), _abs);
+  _RimeGetIntWithFallback(config, prefix + layout + "/shadow_radius",
                           &style.shadow_radius, NULL, _abs);
   // disable shadow for fullscreen layout
   style.shadow_radius *=
       (!(style.layout_type == UIStyle::LAYOUT_HORIZONTAL_FULLSCREEN ||
          style.layout_type == UIStyle::LAYOUT_VERTICAL_FULLSCREEN));
-  _RimeGetIntWithFallback(config, "style/layout/shadow_offset_x",
+  _RimeGetIntWithFallback(config, prefix + layout + "/shadow_offset_x",
                           &style.shadow_offset_x);
-  _RimeGetIntWithFallback(config, "style/layout/shadow_offset_y",
+  _RimeGetIntWithFallback(config, prefix + layout + "/shadow_offset_y",
                           &style.shadow_offset_y);
   // round_corner as alias of hilited_corner_radius
-  _RimeGetIntWithFallback(config, "style/layout/hilited_corner_radius",
-                          &style.round_corner, "style/layout/round_corner",
-                          _abs);
+  _RimeGetIntWithFallback(config, prefix + layout + "/hilited_corner_radius",
+                          &style.round_corner,
+                          &(prefix + layout + "/round_corner"), _abs);
   // corner_radius not set, fallback to round_corner
-  _RimeGetIntWithFallback(config, "style/layout/corner_radius",
-                          &style.round_corner_ex, "style/layout/round_corner",
-                          _abs);
+  _RimeGetIntWithFallback(config, prefix + layout + "/corner_radius",
+                          &style.round_corner_ex,
+                          &(prefix + layout + "/round_corner"), _abs);
   // the weight of the '|' when mark_text is empty, if not set explicitly, set
   // it to the default value 0, which has no effect
   std::function<int()> fb_func = NULL;
   if (initialize)
     fb_func = []() { return 0; };
-  _RimeGetIntWithFallback(config, "style/layout/mark_bar_weight",
+  _RimeGetIntWithFallback(config, prefix + layout + "/mark_bar_weight",
                           &style.mark_bar_weight, NULL, _abs, fb_func);
   // fix padding and spacing settings
   if (style.layout_type != UIStyle::LAYOUT_VERTICAL_TEXT) {
@@ -1747,23 +1843,30 @@ static void _UpdateUIStyle(RimeConfig* config, UI* ui, bool initialize) {
   scale = style.margin_y < 0 ? -1 : 1;
   style.margin_y = scale * max(style.hilite_padding_y, abs(style.margin_y));
   // get enhanced_position
-  _RimeGetBool(config, "style/enhanced_position", initialize,
+  _RimeGetBool(config, prefix + "/enhanced_position", initialize,
                style.enhanced_position, true, false);
+
   // get color scheme
   const int BUF_SIZE = 255;
   char buffer[BUF_SIZE + 1] = {0};
-  if (initialize &&
-      RimeConfigGetString(config, "style/color_scheme", buffer, BUF_SIZE))
-    _UpdateUIStyleColor(config, style);
+  Bool rt = RimeConfigGetString(config, "style/color_scheme", buffer, BUF_SIZE);
+  if (rt && !color_scheme) {
+    _UpdateUIStyle(config, ui, false, buffer);
+    if (initialize)
+      _UpdateUIStyleColor(config, style);
+  }
 }
+
 // load color configs to style, by "style/color_scheme" or specific scheme name
 // "color" which is default empty
 static bool _UpdateUIStyleColor(RimeConfig* config,
                                 UIStyle& style,
                                 std::string color) {
+  ui_marker = "[UI Color]";
   const int BUF_SIZE = 255;
   char buffer[BUF_SIZE + 1] = {0};
   std::string color_mark = "style/color_scheme";
+  std::string global_color = "style/color";
   // color scheme
   if (RimeConfigGetString(config, color_mark.c_str(), buffer, BUF_SIZE) ||
       !color.empty()) {
@@ -1776,73 +1879,85 @@ static bool _UpdateUIStyleColor(RimeConfig* config,
         {std::string("rgba"), COLOR_RGBA},
         {std::string("abgr"), COLOR_ABGR}};
     _RimeParseStringOptWithFallback(config, (prefix + "/color_format"), fmt,
-                                    _colorFmt, COLOR_ABGR);
+                                    _colorFmt, COLOR_ABGR,
+                                    &(global_color + "/color_format"));
     _RimeConfigGetColor32bWithFallback(config, (prefix + "/back_color"),
-                                       style.back_color, fmt, 0xffffffff);
-    _RimeConfigGetColor32bWithFallback(config, (prefix + "/shadow_color"),
-                                       style.shadow_color, fmt,
-                                       TRANSPARENT_COLOR);
-    _RimeConfigGetColor32bWithFallback(config, (prefix + "/prevpage_color"),
-                                       style.prevpage_color, fmt,
-                                       TRANSPARENT_COLOR);
-    _RimeConfigGetColor32bWithFallback(config, (prefix + "/nextpage_color"),
-                                       style.nextpage_color, fmt,
-                                       TRANSPARENT_COLOR);
+                                       style.back_color, fmt, 0xffffffff,
+                                       &(global_color + "/back_color"));
+    _RimeConfigGetColor32bWithFallback(
+        config, (prefix + "/shadow_color"), style.shadow_color, fmt,
+        TRANSPARENT_COLOR, &(global_color + "/shadow_color"));
+    _RimeConfigGetColor32bWithFallback(
+        config, (prefix + "/prevpage_color"), style.prevpage_color, fmt,
+        TRANSPARENT_COLOR, &(global_color + "/prevpage_color"));
+    _RimeConfigGetColor32bWithFallback(
+        config, (prefix + "/nextpage_color"), style.nextpage_color, fmt,
+        TRANSPARENT_COLOR, &(global_color + "/nextpage_color"));
     _RimeConfigGetColor32bWithFallback(config, (prefix + "/text_color"),
-                                       style.text_color, fmt, 0xff000000);
+                                       style.text_color, fmt, 0xff000000,
+                                       &(global_color + "/text_color"));
     _RimeConfigGetColor32bWithFallback(
         config, (prefix + "/candidate_text_color"), style.candidate_text_color,
-        fmt, style.text_color);
+        fmt, style.text_color, &(global_color + "/candidate_text_color"));
     _RimeConfigGetColor32bWithFallback(
         config, (prefix + "/candidate_back_color"), style.candidate_back_color,
-        fmt, TRANSPARENT_COLOR);
-    _RimeConfigGetColor32bWithFallback(config, (prefix + "/border_color"),
-                                       style.border_color, fmt,
-                                       style.text_color);
-    _RimeConfigGetColor32bWithFallback(config, (prefix + "/hilited_text_color"),
-                                       style.hilited_text_color, fmt,
-                                       style.text_color);
-    _RimeConfigGetColor32bWithFallback(config, (prefix + "/hilited_back_color"),
-                                       style.hilited_back_color, fmt,
-                                       style.back_color);
+        fmt, TRANSPARENT_COLOR, &(global_color + "/candidate_back_color"));
+    _RimeConfigGetColor32bWithFallback(
+        config, (prefix + "/border_color"), style.border_color, fmt,
+        style.text_color, &(global_color + "/border_color"));
+    _RimeConfigGetColor32bWithFallback(
+        config, (prefix + "/hilited_text_color"), style.hilited_text_color, fmt,
+        style.text_color, &(global_color + "/hilited_text_color"));
+    _RimeConfigGetColor32bWithFallback(
+        config, (prefix + "/hilited_back_color"), style.hilited_back_color, fmt,
+        style.back_color, &(global_color + "/hilited_back_color"));
     _RimeConfigGetColor32bWithFallback(
         config, (prefix + "/hilited_candidate_text_color"),
-        style.hilited_candidate_text_color, fmt, style.hilited_text_color);
+        style.hilited_candidate_text_color, fmt, style.hilited_text_color,
+        &(global_color + "/hilited_candidate_text_color"));
     _RimeConfigGetColor32bWithFallback(
         config, (prefix + "/hilited_candidate_back_color"),
-        style.hilited_candidate_back_color, fmt, style.hilited_back_color);
+        style.hilited_candidate_back_color, fmt, style.hilited_back_color,
+        &(global_color + "/hilited_candidate_back_color"));
     _RimeConfigGetColor32bWithFallback(
         config, (prefix + "/hilited_candidate_shadow_color"),
-        style.hilited_candidate_shadow_color, fmt, TRANSPARENT_COLOR);
+        style.hilited_candidate_shadow_color, fmt, TRANSPARENT_COLOR,
+        &(global_color + "/hilited_candidate_shadow_color"));
     _RimeConfigGetColor32bWithFallback(
         config, (prefix + "/hilited_shadow_color"), style.hilited_shadow_color,
-        fmt, TRANSPARENT_COLOR);
+        fmt, TRANSPARENT_COLOR, &(global_color + "/hilited_shadow_color"));
     _RimeConfigGetColor32bWithFallback(
         config, (prefix + "/candidate_shadow_color"),
-        style.candidate_shadow_color, fmt, TRANSPARENT_COLOR);
+        style.candidate_shadow_color, fmt, TRANSPARENT_COLOR,
+        &(global_color + "/candidate_shadow_color"));
     _RimeConfigGetColor32bWithFallback(
         config, (prefix + "/candidate_border_color"),
-        style.candidate_border_color, fmt, TRANSPARENT_COLOR);
+        style.candidate_border_color, fmt, TRANSPARENT_COLOR,
+        &(global_color + "/candidate_border_color"));
     _RimeConfigGetColor32bWithFallback(
         config, (prefix + "/hilited_candidate_border_color"),
-        style.hilited_candidate_border_color, fmt, TRANSPARENT_COLOR);
+        style.hilited_candidate_border_color, fmt, TRANSPARENT_COLOR,
+        &(global_color + "/hilited_candidate_border_color"));
     _RimeConfigGetColor32bWithFallback(
         config, (prefix + "/label_color"), style.label_text_color, fmt,
-        blend_colors(style.candidate_text_color, style.candidate_back_color));
+        blend_colors(style.candidate_text_color, style.candidate_back_color),
+        &(global_color + "/label_color"));
     _RimeConfigGetColor32bWithFallback(
         config, (prefix + "/hilited_label_color"),
         style.hilited_label_text_color, fmt,
         blend_colors(style.hilited_candidate_text_color,
-                     style.hilited_candidate_back_color));
-    _RimeConfigGetColor32bWithFallback(config, (prefix + "/comment_text_color"),
-                                       style.comment_text_color, fmt,
-                                       style.label_text_color);
+                     style.hilited_candidate_back_color),
+        &(global_color + "/hilited_label_color"));
+    _RimeConfigGetColor32bWithFallback(
+        config, (prefix + "/comment_text_color"), style.comment_text_color, fmt,
+        style.label_text_color, &(global_color + "/comment_text_color"));
     _RimeConfigGetColor32bWithFallback(
         config, (prefix + "/hilited_comment_text_color"),
-        style.hilited_comment_text_color, fmt, style.hilited_label_text_color);
-    _RimeConfigGetColor32bWithFallback(config, (prefix + "/hilited_mark_color"),
-                                       style.hilited_mark_color, fmt,
-                                       TRANSPARENT_COLOR);
+        style.hilited_comment_text_color, fmt, style.hilited_label_text_color,
+        &(global_color + "/hilited_comment_text_color"));
+    _RimeConfigGetColor32bWithFallback(
+        config, (prefix + "/hilited_mark_color"), style.hilited_mark_color, fmt,
+        TRANSPARENT_COLOR, &(global_color + "/hilited_mark_color"));
     return true;
   }
   return false;
